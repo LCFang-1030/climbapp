@@ -3,11 +3,32 @@
   <div class="staff">
     <h1>This is an staff login page</h1>
 
-    <h4>user: {{ user }} &nbsp; <input type="text" ref="inputRef" v-model.trim="user" /></h4>
-    <h4>password: {{ password }} &nbsp; <input type="text" v-model.trim="password" /></h4>
+    <div class="login-form">
+      <label class="form-row">
+        <span>user:</span>
+        <select ref="inputRef" v-model="user">
+          <option disabled value="">請選擇員工</option>
+          <option
+            v-for="staff in staffList"
+            :key="staff.eid"
+            :value="staff.eid"
+          >
+            {{ staff.name }}（{{ staff.eid }}）
+          </option>
+        </select>
+      </label>
 
-    {{ islogin }}
-    <button @click="Setlogin()"> login </button>
+      <label class="form-row">
+        <span>password:</span>
+        <input type="password" v-model.trim="password" />
+      </label>
+
+      <div class="login-action">
+        <span>{{ islogin }}</span>
+        <button class="login-button" @click="Setlogin()"> login </button>
+      </div>
+    </div>
+
     <h4>datetime: {{ datetime }}</h4>
 
   <table border="1">
@@ -100,3 +121,40 @@ export default {
 
 }
 </script>
+
+<style scoped>
+.login-form {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 90px 220px;
+  column-gap: 12px;
+  align-items: center;
+}
+
+.form-row span {
+  text-align: right;
+}
+
+.form-row input,
+.form-row select {
+  width: 220px;
+  box-sizing: border-box;
+}
+
+.login-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  align-self: flex-end;
+  margin-top: 6px;
+}
+
+.login-button {
+  width: fit-content;
+}
+</style>
