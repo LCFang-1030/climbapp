@@ -9,6 +9,9 @@ const port = 3000;
 // 讓前端 http://localhost:8080 可以連線
 app.use(cors());
 app.use(express.json());
+app.set('json replacer', (key, value) =>
+  typeof value === 'bigint' ? value.toString() : value
+);
 
 // MariaDB 連線池
 const pool = mariadb.createPool({
@@ -46,7 +49,8 @@ app.get('/api/members', async (req, res) => {
     conn.release();
     res.json(rows);
   } catch (err) {
-    res.status(500).send(err);
+    console.error('取得 members 失敗', err);
+    res.status(500).send('DB error');
   }
 });
 
