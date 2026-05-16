@@ -126,4 +126,9 @@ app.delete('/api/members/:id', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`API running on http://localhost:${port}`);
+  const routeStack = app.router?.stack ?? app._router?.stack ?? [];
+  console.log('Routes:', routeStack
+    .filter((layer) => layer.route)
+    .map((layer) => `${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`)
+  );
 });
