@@ -45,7 +45,21 @@ app.get('/api/staff', async (req, res) => {
 app.get('/api/members', async (req, res) => {
   try {
     const conn = await pool.getConnection();
-    const rows = await conn.query('SELECT * FROM members');
+    const rows = await conn.query(`
+      SELECT m.*, COALESCE(active_pass.pass_type, 'single') AS pass_type
+      FROM members m
+      LEFT JOIN (
+        SELECT mp.member_id, mp.pass_type
+        FROM member_passes mp
+        INNER JOIN (
+          SELECT member_id, MAX(pass_id) AS pass_id
+          FROM member_passes
+          WHERE is_active = 1
+          GROUP BY member_id
+        ) latest_pass ON latest_pass.pass_id = mp.pass_id
+      ) active_pass ON active_pass.member_id = m.member_id
+      ORDER BY m.member_id
+    `);
     conn.release();
     res.json(rows);
   } catch (err) {

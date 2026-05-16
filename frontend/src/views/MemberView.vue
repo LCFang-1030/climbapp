@@ -13,6 +13,7 @@
             <tr>
               <th>會員編號</th>
               <th>姓名</th>
+              <th>長期票</th>
             </tr>
           </thead>
           <tbody>
@@ -27,6 +28,7 @@
                 </button>
               </td>
               <td>{{ member.name }}</td>
+              <td>{{ passText(member.pass_type) }}</td>
             </tr>
           </tbody>
         </table>
@@ -40,6 +42,7 @@
             <tr>
               <th>會員編號</th>
               <th>姓名</th>
+              <th>長期票</th>
             </tr>
           </thead>
           <tbody>
@@ -54,6 +57,7 @@
                 </button>
               </td>
               <td>{{ member.name }}</td>
+              <td>{{ passText(member.pass_type) }}</td>
             </tr>
           </tbody>
         </table>
@@ -124,7 +128,7 @@ export default {
         return []
       }
 
-      return Object.entries(this.selectedMember)
+      return Object.entries(this.selectedMember).filter(([key]) => key !== 'pass_type')
     },
   },
 
@@ -179,6 +183,23 @@ export default {
       }
 
       return labels[key] ?? key
+    },
+
+    passText(passType) {
+      const passLabels = {
+        0: 'NONE',
+        single: 'NONE',
+        1: '月票',
+        monthly: '月票',
+        2: '季票',
+        quarterly: '季票',
+        3: '半年票',
+        half_year: '半年票',
+        4: '年票',
+        yearly: '年票',
+      }
+
+      return passLabels[passType] ?? passType ?? 'NONE'
     },
 
     formatValue(value, key = '') {
