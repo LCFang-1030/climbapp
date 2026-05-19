@@ -167,6 +167,7 @@ export default {
         member_id: '會員序號',
         member_code: '會員編號',
         name: '姓名',
+        idcard: '身分證字號',
         phone: '電話',
         birthday: '生日',
         gender: '性別',

@@ -40,9 +40,10 @@
 <script>
 export default {
   data() {
-        return {
+    return {
       labels: {
         name: "姓名",
+        idcard: "身分證字號",
         phone: "電話",
         birthday: "生日",
         gender: "性別",
@@ -56,6 +57,7 @@ export default {
 
       form: {
         name: "",
+        idcard: "",
         phone: "",
         birthday: "",
         gender: "",
