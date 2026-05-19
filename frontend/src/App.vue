@@ -39,6 +39,7 @@ export default {
         { label: 'Member', to: '/member?x=aaa' },
         { label: 'Entry', to: '/entry' },
         { label: 'Account', to: '/account?x=aaa' },
+        { label: 'Form', to: '/form' },
       ],
     }
   },
