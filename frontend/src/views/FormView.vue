@@ -107,8 +107,8 @@ export default {
 
         console.log(res.data);
       } catch (err) {
-        console.error('新增失敗', err);
-        alert('新增失敗');
+        console.error('新增會員資料失敗', err);
+        alert('新增會員資料失敗');
       }
     },
 
