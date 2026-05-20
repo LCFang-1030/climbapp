@@ -72,17 +72,88 @@ app.get('/api/members', async (req, res) => {
 // 2. 新增會員（POST）
 // ------------------------------------
 app.post('/api/members', async (req, res) => {
-  const { name, age } = req.body;
+  const {
+    name,
+    idcard,
+    phone,
+    birthday,
+    gender,
+    address,
+    email,
+    emergency_name,
+    emergency_phone,
+    emergency_relation,
+    line_user_id,
+    note
+  } = req.body;
+  
+  let conn;
   try {
-    const conn = await pool.getConnection();
-    const result = await conn.query(
-      'INSERT INTO members(name, age) VALUES (?, ?)',
-      [name, age]
+    conn = await pool.getConnection();
+
+    // 1. 根據性別決定前綴 (1:男 M, 2:女 W, 其他 O)
+    let prefix = 'O';
+    const g = Number(gender);
+    if (g === 1) prefix = 'M';
+    else if (g === 2) prefix = 'W';
+
+    // 2. 查詢該性別目前最大的 member_code
+    const rows = await conn.query(
+      `SELECT MAX(member_code) as maxCode FROM members WHERE member_code LIKE ?`,
+      [`${prefix}%`]
     );
-    conn.release();
-    res.json({ id: result.insertId, name, age });
+
+    let nextNum = 1;
+    if (rows[0] && rows[0].maxCode) {
+      // 取得後 6 位數字部分並加 1
+      const currentNum = parseInt(rows[0].maxCode.substring(1), 10);
+      if (!isNaN(currentNum)) nextNum = currentNum + 1;
+    }
+
+    // 3. 生成新的 member_code (例如 M000001)
+    const member_code = `${prefix}${String(nextNum).padStart(6, '0')}`;
+
+    const result = await conn.query(
+      `
+      INSERT INTO members (
+        member_code,
+        name,
+        idcard,
+        phone,
+        birthday,
+        gender,
+        address,
+        email,
+        emergency_name,
+        emergency_phone,
+        emergency_relation,
+        line_user_id,
+        note
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        member_code,
+        name,
+        idcard,
+        phone,
+        birthday,
+        gender,
+        address,
+        email,
+        emergency_name,
+        emergency_phone,
+        emergency_relation,
+        line_user_id,
+        note
+      ]
+    );
+    res.json({ success: true, member_id: result.insertId, name, member_code });
   } catch (err) {
-    res.status(500).send(err);
+    console.error('新增會員失敗:', err);
+    res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
   }
 });
 

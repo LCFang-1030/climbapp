@@ -9,17 +9,17 @@
       <!-- 👇 gender 特別處理 -->
       <div v-if="key === 'gender'">
         <label>
-          <input type="radio" value="male" v-model="form.gender" />
+          <input type="radio" :value="1" v-model="form.gender" />
           男性
         </label>
 
         <label>
-          <input type="radio" value="female" v-model="form.gender" />
+          <input type="radio" :value="2" v-model="form.gender" />
           女性
         </label>
 
         <label>
-          <input type="radio" value="other" v-model="form.gender" />
+          <input type="radio" :value="3" v-model="form.gender" />
           其他
         </label>
       </div>
@@ -38,6 +38,8 @@
 </template>
 
 <script>
+import axios from 'axios'
+
 export default {
   data() {
     return {
@@ -52,7 +54,8 @@ export default {
         emergency_name: "緊急聯絡人",
         emergency_phone: "緊急聯絡人電話",
         emergency_relation: "關係",
-        line_user_id: "Line"
+        line_user_id: "Line",
+        note: "備註",
       },
 
       form: {
@@ -66,14 +69,25 @@ export default {
         emergency_name: "",
         emergency_phone: "",
         emergency_relation: "",
-        line_user_id: ""
+        line_user_id: "",
+        note: "",
       }
     };
   },
 
   methods: {
-    submit() {
-      console.log(this.form);
+    async submit() {
+      try {
+        console.log(this.form);
+
+        const res = await axios.post('/api/members', this.form);
+        alert(`新增成功\n會員編號：${res.data.member_code}`);
+
+        console.log(res.data);
+      } catch (err) {
+        console.error('新增失敗', err);
+        alert('新增失敗');
+      }
     }
   }
 }
