@@ -63,6 +63,35 @@
         </table>
         <p v-else>目前沒有女性會員資料</p>
       </section>
+
+      <section class="member-section">
+        <h2>其他會員</h2>
+        <table v-if="othersMembers.length" border="1" class="member-board">
+          <thead>
+            <tr>
+              <th>會員編號</th>
+              <th>姓名</th>
+              <th>長期票</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="member in othersMembers" :key="memberKey(member)">
+              <td>
+                <button
+                  type="button"
+                  class="member-code-button"
+                  @click="openMemberDialog(member)"
+                >
+                  {{ member.member_code }}
+                </button>
+              </td>
+              <td>{{ member.name }}</td>
+              <td>{{ passText(member.pass_type) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-else>目前沒有其他會員資料</p>
+      </section>
     </div>
 
     <p v-else>目前沒有會員資料</p>
@@ -121,6 +150,10 @@ export default {
 
     femaleMembers() {
       return this.members.filter((member) => Number(member.gender) === 2)
+    },
+
+    othersMembers() {
+      return this.members.filter((member) => Number(member.gender) === 3)
     },
 
     selectedMemberDetails() {
