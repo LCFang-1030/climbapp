@@ -22,10 +22,9 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
-// app.get('/api/members', (req, res) => {
-//   res.json([{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }]);
-// });
-
+// ------------------------------------
+// 取得所有員工（GET）
+// ------------------------------------
 app.get('/api/staff', async (req, res) => {
   try {
     const conn = await pool.getConnection();
@@ -40,7 +39,68 @@ app.get('/api/staff', async (req, res) => {
 });
 
 // ------------------------------------
-// 1. 取得所有會員（GET）
+// 新增員工（POST）
+// ------------------------------------
+app.post('/api/staff', async (req, res) => {
+  const {
+    name,
+    idcard,
+    phone,
+    address,
+    role,
+    username,
+    password
+  } = req.body;
+  
+  let conn;
+  try {
+    // 基本檢查
+    if (!name || !idcard || !phone || !address || !username || !password) {
+      return res.status(400).send('資料不完整');
+    }
+
+    conn = await pool.getConnection();
+
+    // 檢查身份證是否重複
+    const exist = await conn.query(
+      'SELECT eid FROM staff WHERE idcard = ?',
+      [idcard]
+    );
+
+    if (exist.length > 0) {
+      return res.status(400).send('身份證字號已存在');
+    }
+
+    // 新增員工
+    const result = await conn.query(
+      `INSERT INTO staff 
+      (name, idcard, phone, address, role, username, password)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        idcard,
+        phone,
+        address,
+        role || 1,
+        username,
+        password
+      ]
+    );
+
+    res.json({
+      success: true,
+      eid: result.insertId
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('STAFF DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+// ------------------------------------
+// 取得所有會員（GET）
 // ------------------------------------
 app.get('/api/members', async (req, res) => {
   try {
@@ -69,7 +129,7 @@ app.get('/api/members', async (req, res) => {
 });
 
 // ------------------------------------
-// 2. 新增會員（POST）
+// 新增會員（POST）
 // ------------------------------------
 app.post('/api/members', async (req, res) => {
   const {
@@ -158,7 +218,7 @@ app.post('/api/members', async (req, res) => {
 });
 
 // ------------------------------------
-// 3. 修改會員（PUT）
+// 修改會員（PUT）
 // ------------------------------------
 app.put('/api/members/:id', async (req, res) => {
   const { id } = req.params;
@@ -179,7 +239,7 @@ app.put('/api/members/:id', async (req, res) => {
 });
 
 // ------------------------------------
-// 4. 刪除會員（DELETE）
+// 刪除會員（DELETE）
 // ------------------------------------
 app.delete('/api/members/:id', async (req, res) => {
   const { id } = req.params;

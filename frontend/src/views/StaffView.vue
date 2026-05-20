@@ -1,12 +1,12 @@
 
 <template>
   <div class="staff">
-    <h1>This is an staff login page</h1>
+    <h1>{{ isSignupMode ? '員工註冊' : '員工登入' }}</h1>
 
-    <div class="login-form">
+    <div v-if="!isSignupMode" class="login-form">
       <label class="form-row">
-        <span>user:</span>
-        <select ref="inputRef" v-model="user">
+        <span>username:</span>
+        <select ref="inputRef" v-model="username">
           <option disabled value="">請選擇員工</option>
           <option
             v-for="staff in staffList"
@@ -24,8 +24,32 @@
       </label>
 
       <div class="login-action">
-        <span>{{ islogin }}</span>
-        <button class="login-button" @click="Setlogin()"> login </button>
+        <button class="login-button" @click="GotoSignup()"> Sign up </button>
+        <button class="login-button" @click="Setlogin()"> Login </button>
+      </div>
+    </div>
+
+    <!-- 註冊表單 -->
+    <div v-else class="login-form">
+      <div v-for="(label, key) in labels" :key="key" class="form-row">
+        <span>{{ label }}:</span>
+        
+        <select v-if="key === 'role'" v-model="form.role">
+          <option value="1">員工</option>
+          <option value="2">管理人</option>
+          <option value="3">老闆</option>
+        </select>
+
+        <input 
+          v-else 
+          :type="key === 'password' ? 'password' : 'text'" 
+          v-model.trim="form[key]" 
+        />
+      </div>
+
+      <div class="login-action">
+        <button class="login-button" @click="isSignupMode = false"> 取消 </button>
+        <button class="login-button" @click="SetSignup()"> Set Signup </button>
       </div>
     </div>
 
@@ -68,20 +92,37 @@ export default {
     return {
       x: this.$route.query.x,
 
-      user: '',
+      username: '',
       password: '',
       islogin: false,
+      isSignupMode: false, // 控制顯示登入或註冊表單
       datetime: '',
       staffList: [],
+
+      labels: {
+        name: "姓名",
+        idcard: "身分證字號",
+        phone: "電話",
+        address: "住址",
+        role: "角色",
+        username: "帳號",
+        password: "密碼",
+      },
+
+      form: {
+        name: "",
+        idcard: "",
+        phone : "",
+        address: "",
+        role: "1",
+        username: "",
+        password: "",
+      }
     }
   },
 
   methods: {
     Setlogin() {
-      // this.islogin = true;
-      // 關分頁就清
-      // sessionStorage.setItem('islogin', 'true');
-      // 永久，除非你刪
       localStorage.setItem('islogin', 'true');
       this.datetime = new Date().toLocaleString('zh-TW', { hour12: false });
       
@@ -89,6 +130,65 @@ export default {
         console.log('login success, changed');
         this.$router.push('/entry');
       }, 500);
+    },
+
+    GotoSignup() {
+      // 進入註冊頁面前先重設表單資料
+      this.Clearform();
+      this.isSignupMode = true; // 切換到註冊模式
+    },
+
+    async SetSignup() {
+      try {
+        // 基本檢查
+        if (
+          !this.form.name ||
+          !this.form.idcard ||
+          !this.form.phone ||
+          !this.form.address ||
+          !this.form.role ||
+          !this.form.username ||
+          !this.form.password
+        ) {
+          alert('請填寫完整資料');
+          return;
+        }
+
+        const res = await axios.post('/api/staff', {
+          name: this.form.name,
+          idcard: this.form.idcard,
+          phone: this.form.phone,
+          address: this.form.address,
+          role: this.form.role || 1,
+          username: this.form.username,
+          password: this.form.password,
+        });
+        
+        alert(`註冊成功！員工編號為: ${res.data.eid}`);
+        this.Clearform();
+        this.isSignupMode = false; // 註冊成功後切回登入畫面
+        this.fetchStaff(); // 重新取得員工列表，以便登入時選擇新員工
+        console.log(res.data);
+      } catch (err) {
+        console.error('註冊員工失敗', err);
+        if (err.response?.data) {
+          alert(err.response.data);
+        } else {
+          alert('註冊員工失敗');
+        }
+      }
+    },
+
+    Clearform(){
+      this.form = {
+        name: "",
+        idcard: "",
+        phone : "",
+        address: "",
+        role: "1",
+        username: "",
+        password: "",
+      };
     },
 
     roleText(role) {
