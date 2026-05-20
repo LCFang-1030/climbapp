@@ -166,13 +166,15 @@ DROP TABLE IF EXISTS `staff`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `staff` (
   `eid` int(10) unsigned zerofill NOT NULL AUTO_INCREMENT COMMENT '員工編號',
-  `userid` char(10) NOT NULL COMMENT '身分證字號',
   `name` varchar(50) NOT NULL COMMENT '姓名',
+  `idcard` varchar(10) NOT NULL COMMENT '身分證字號',
   `phone` char(10) NOT NULL COMMENT '電話',
   `address` varchar(255) NOT NULL COMMENT '地址',
   `role` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '權限: 1員工 2管理人 3老闆',
+  `username` varchar(50) NOT NULL COMMENT '使用者帳號',
+  `password` varchar(255) NOT NULL COMMENT '使用者密碼',
   PRIMARY KEY (`eid`),
-  UNIQUE KEY `uk_userid` (`userid`),
+  UNIQUE KEY `uk_userid` (`idcard`),
   KEY `idx_name` (`name`),
   KEY `idx_role` (`role`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
@@ -186,7 +188,7 @@ LOCK TABLES `staff` WRITE;
 /*!40000 ALTER TABLE `staff` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `staff` VALUES
-(0000000001,'D123456789','andy','0911111111','台南市安安區中山路XXXXXXX',1);
+(0000000001,'andy','D123456789','0911111111','台南市安安區中山路XXXXXXX',1,'','');
 /*!40000 ALTER TABLE `staff` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -200,4 +202,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-20 11:22:51
+-- Dump completed on 2026-05-20 16:05:24
