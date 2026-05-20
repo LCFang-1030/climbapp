@@ -94,14 +94,14 @@ CREATE TABLE `members` (
   `name` varchar(100) NOT NULL,
   `idcard` varchar(20) NOT NULL,
   `phone` varchar(20) NOT NULL,
-  `birthday` date DEFAULT NULL,
-  `gender` tinyint(4) DEFAULT NULL,
-  `address` varchar(255) DEFAULT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `emergency_name` varchar(100) DEFAULT NULL,
-  `emergency_phone` varchar(20) DEFAULT NULL,
-  `emergency_relation` varchar(50) DEFAULT NULL,
-  `line_user_id` varchar(100) DEFAULT NULL,
+  `birthday` date NOT NULL,
+  `gender` tinyint(4) NOT NULL,
+  `address` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `emergency_name` varchar(100) NOT NULL,
+  `emergency_phone` varchar(20) NOT NULL,
+  `emergency_relation` varchar(50) NOT NULL,
+  `line_user_id` varchar(100) NOT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `note` text DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
@@ -200,4 +200,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-20  0:02:15
+-- Dump completed on 2026-05-20 11:22:51
