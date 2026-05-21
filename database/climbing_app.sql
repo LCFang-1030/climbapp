@@ -113,7 +113,7 @@ CREATE TABLE `members` (
   UNIQUE KEY `uk_phone` (`phone`),
   UNIQUE KEY `idcard` (`idcard`),
   UNIQUE KEY `uk_line_user_id` (`line_user_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -125,7 +125,8 @@ LOCK TABLES `members` WRITE;
 set autocommit=0;
 INSERT INTO `members` VALUES
 (1,'M000001','王小明','TW','D111111111','0912345678','1995-08-12',1,'桃園市中壢區XX路100號','ming@example.com','王大明','0988777666','台南市安南區xxx','父親','U4af4980629xxxxxxx',1,'第一次攀岩，怕高','2026-05-14 21:56:45','2026-05-21 16:29:01'),
-(3,'W000001','王小美','TW','D211111111','0923456789','1995-08-12',2,'桃園市中壢區XX路100號','mei@example.com','王大美','0966677788','台南市安南區xxx','母親','U4hf64897654xxxxxxx',1,'好玩','2026-05-15 15:09:59','2026-05-21 16:29:07');
+(3,'W000001','王小美','TW','D211111111','0923456789','1995-08-12',2,'桃園市中壢區XX路100號','mei@example.com','王大美','0966677788','台南市安南區xxx','母親','U4hf64897654xxxxxxx',1,'好玩','2026-05-15 15:09:59','2026-05-21 16:29:07'),
+(5,'M000002','asd','asd','D123456789','0911111111','2026-05-12',1,'wesfg','123ergdr@gmail.com','24134wewer','0911111111','dfgdfg','sdfsdf','sdfsdf',1,'','2026-05-21 16:44:48','2026-05-21 16:44:48');
 /*!40000 ALTER TABLE `members` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -192,6 +193,7 @@ CREATE TABLE `staff` (
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
   PRIMARY KEY (`eid`),
   UNIQUE KEY `uk_userid` (`idcard`),
+  UNIQUE KEY `uk_employee_id` (`employee_id`),
   KEY `idx_name` (`name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -205,8 +207,8 @@ LOCK TABLES `staff` WRITE;
 set autocommit=0;
 INSERT INTO `staff` VALUES
 (000001,'andy','TW','D123456789',1,'2000-01-01','0911111111','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','staff0001',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-21 14:48:50'),
-(000002,'asd','TW','D111111234',1,'2000-01-01','0912345789','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','staff0001',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-21 14:49:01'),
-(000003,'andy2','TW','D111234567',1,'2000-02-01','0912345678','台南市安南區xxx','台南市安南區xxx','abdasdf@gamil.com','andy2-1','06-2223334','0913334567','台南市安南區xxx','朋友','staff0001',1,'行政人員',1,'aaaaa','哈哈哈','2026-05-21 14:45:51','2026-05-21 14:45:51');
+(000002,'asd','TW','D111111234',1,'2000-01-01','0912345789','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','staff0002',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-21 17:01:44'),
+(000003,'andy2','TW','D111234567',1,'2000-02-01','0912345678','台南市安南區xxx','台南市安南區xxx','abdasdf@gamil.com','andy2-1','06-2223334','0913334567','台南市安南區xxx','朋友','staff0003',1,'行政人員',1,'aaaaa','哈哈哈','2026-05-21 14:45:51','2026-05-21 17:01:52');
 /*!40000 ALTER TABLE `staff` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -220,4 +222,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-21 16:30:39
+-- Dump completed on 2026-05-21 17:03:58
