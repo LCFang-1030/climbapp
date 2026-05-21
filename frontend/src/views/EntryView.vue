@@ -33,9 +33,9 @@
 
     <div>
       equipment: {{ equipment }} &nbsp;&nbsp;
-      <label v-for="item in equipmentOptions" :key="item.id">
-        <input type="checkbox" :value="item.id" v-model="equipment" />
-        {{ item.label }} ${{ item.price }}
+      <label v-for="item in equipmentOptions" :key="item.rental_id">
+        <input type="checkbox" :value="item.rental_id" v-model="equipment" />
+        {{ item.rental_name }} ${{ item.rental_price }}
       </label>
     </div>
 
@@ -70,6 +70,7 @@ export default {
     this.datetime = new Date().toLocaleString('zh-TW', { hour12: false })
     this.fetchMembers()
     this.fetchTickets()
+    this.fetchRentalEquipment()
   },
 
   data() {
@@ -84,12 +85,7 @@ export default {
       searchMessage: '',
       equipment: [],
       ticket_type: null,
-      equipmentOptions: [
-        { id: 'shoes', label: '租鞋', price: 100 },
-        { id: 'rope', label: '繩索', price: 50 },
-        { id: 'harness', label: '吊帶', price: 70 },
-        { id: 'chalk_bag', label: '粉袋', price: 80 },
-      ],
+      equipmentOptions: [],
       ticketOptions: [],
       entry_record: {
         datetime: '',
@@ -121,7 +117,18 @@ export default {
           ? res.data.filter((ticket) => Number(ticket.is_active) !== 0)
           : []
       } catch (err) {
-        console.error('取得票種失敗', err)
+        console.error('取得 ticket 失敗', err)
+      }
+    },
+
+    async fetchRentalEquipment() {
+      try {
+        const res = await axios.get('/api/rental_equipment')
+        this.equipmentOptions = Array.isArray(res.data)
+          ? res.data.filter((item) => Number(item.is_active) !== 0)
+          : []
+      } catch (err) {
+        console.error('取得 rental_equipment 失敗', err)
       }
     },
 
@@ -145,8 +152,8 @@ export default {
         if (!member) {
           this.clearMember()
           this.searchMessage = matches.length > 1
-            ? `找到 ${matches.length} 位會員，請輸入更完整的資料`
-            : '找不到符合的會員'
+            ? `找到 ${matches.length} 筆資料，請輸入更完整資訊`
+            : '查無符合的會員'
           return
         }
 
@@ -260,14 +267,14 @@ export default {
       const passLabels = {
         0: 'NONE',
         single: 'NONE',
-        1: '月卡',
-        monthly: '月卡',
-        2: '季卡',
-        quarterly: '季卡',
-        3: '半年卡',
-        half_year: '半年卡',
-        4: '年卡',
-        yearly: '年卡',
+        1: '月票',
+        monthly: '月票',
+        2: '季票',
+        quarterly: '季票',
+        3: '半年票',
+        half_year: '半年票',
+        4: '年票',
+        yearly: '年票',
       }
 
       return passLabels[passType] ?? passType ?? 'NONE'
@@ -345,8 +352,8 @@ export default {
     price_total() {
       const ticketTotal = Number(this.selectedTicket?.ticket_price ?? 0)
       const equipmentTotal = this.equipment.reduce((total, id) => {
-        const item = this.equipmentOptions.find((option) => option.id === id)
-        return total + Number(item?.price ?? 0)
+        const item = this.equipmentOptions.find((option) => option.rental_id === id)
+        return total + Number(item?.rental_price ?? 0)
       }, 0)
 
       return ticketTotal + equipmentTotal

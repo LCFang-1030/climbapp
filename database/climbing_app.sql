@@ -132,6 +132,44 @@ UNLOCK TABLES;
 commit;
 
 --
+-- Table structure for table `rental_equipment`
+--
+
+DROP TABLE IF EXISTS `rental_equipment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `rental_equipment` (
+  `rental_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '租借商品ID',
+  `rental_code` varchar(50) NOT NULL COMMENT '租借商品代碼',
+  `rental_name` varchar(100) NOT NULL COMMENT '租借商品名稱',
+  `rental_price` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '租借價格',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用',
+  `note` varchar(255) DEFAULT NULL COMMENT '備註',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
+  PRIMARY KEY (`rental_id`),
+  UNIQUE KEY `rental_code` (`rental_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='裝備租借價格表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `rental_equipment`
+--
+
+LOCK TABLES `rental_equipment` WRITE;
+/*!40000 ALTER TABLE `rental_equipment` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `rental_equipment` VALUES
+(1,'shoes','岩鞋',20.00,1,NULL,'2026-05-21 10:57:27','2026-05-21 11:10:02'),
+(2,'rope','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-21 10:57:27'),
+(3,'harness','吊帶',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-21 10:57:27'),
+(4,'chalk','粉塊',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-21 10:57:27'),
+(5,'chalk_bag','粉袋',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-21 10:57:27');
+/*!40000 ALTER TABLE `rental_equipment` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `role_def`
 --
 
@@ -263,4 +301,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-21 18:53:48
+-- Dump completed on 2026-05-21 19:10:27

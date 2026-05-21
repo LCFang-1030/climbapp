@@ -437,6 +437,90 @@ app.post('/api/ticket/:price', async (req, res) => {
   }
 });
 
+app.get('/api/rental_equipment', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT rental_id, rental_code, rental_name, rental_price, is_active, note
+      FROM rental_equipment
+      ORDER BY rental_id
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('rental_equipment DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/rental_equipment', async (req, res) => {
+  const {
+    rental_code,
+    rental_name,
+    rental_price,
+    is_active,
+    note,
+  } = req.body;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const result = await conn.query(
+      `INSERT INTO rental_equipment (
+        rental_code,
+        rental_name,
+        rental_price,
+        is_active,
+        note
+      ) VALUES (?, ?, ?, ?, ?)`,
+      [
+        rental_code,
+        rental_name,
+        rental_price,
+        is_active,
+        note,
+      ]
+    );
+
+    res.json({ success: true, rental_id: result.insertId, rental_code, rental_name });
+  } catch (err) {
+    console.error('新增 rental_equipment 失敗', err);
+    res.status(500).send('rental_equipment DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/rental_equipment/:price', async (req, res) => {
+  const { price } = req.params;
+  const { rental_id, rental_price } = req.body;
+
+  let conn;
+  try {
+    if (!rental_id) {
+      res.status(400).json({ success: false, message: 'rental_id is required' });
+      return;
+    }
+
+    conn = await pool.getConnection();
+    await conn.query(
+      `UPDATE rental_equipment
+       SET rental_price = ?
+       WHERE rental_id = ?`,
+      [rental_price, rental_id]
+    );
+
+    res.json({ success: true, rental_id, rental_price, previous_price: price });
+  } catch (err) {
+    console.error('更新 rental_equipment 價格失敗', err);
+    res.status(500).send('rental_equipment DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.listen(port, () => {
   console.log(`API running on http://localhost:${port}`);
   const routeStack = app.router?.stack ?? app._router?.stack ?? [];

@@ -41,6 +41,7 @@ export default {
         { label: 'Account', to: '/account?x=aaa' },
         { label: 'Form', to: '/form' },
         { label: 'Ticket', to: '/ticket' },
+        { label: 'RentalEquipment', to: '/rental' },
       ],
     }
   },
