@@ -184,6 +184,7 @@ app.post('/api/members', async (req, res) => {
     emergency_address,
     emergency_relation,
     line_user_id,
+    is_active,
     note
   } = req.body;
 
@@ -229,8 +230,9 @@ app.post('/api/members', async (req, res) => {
         emergency_address,
         emergency_relation,
         line_user_id,
+        is_active,
         note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         member_code,
         name,
@@ -246,6 +248,7 @@ app.post('/api/members', async (req, res) => {
         emergency_address,
         emergency_relation,
         line_user_id,
+        is_active,
         note
       ]
     );

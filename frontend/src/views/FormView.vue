@@ -58,31 +58,37 @@ export default {
 
       labels: {
         name: "姓名",
+        nationality: "國籍",
         idcard: "身分證字號",
         phone: "電話",
         birthday: "生日",
         gender: "性別",
-        address: "住址",
+        contact_address: "通訊住址",
         email: "電子信箱",
         emergency_name: "緊急聯絡人",
         emergency_phone: "緊急聯絡人電話",
+        emergency_address: "緊急聯絡人住址",
         emergency_relation: "關係",
-        line_user_id: "Line",
+        line_user_id: "Line_id",
+        // is_active: "狀態",
         note: "備註",
       },
 
       form: {
         name: "",
+        nationality: "",
         idcard: "",
         phone: "",
         birthday: "",
         gender: "",
-        address: "",
+        contact_address: "",
         email: "",
         emergency_name: "",
         emergency_phone: "",
+        emergency_address: "",
         emergency_relation: "",
         line_user_id: "",
+        is_active: "1",
         note: "",
       }
     };
@@ -115,14 +121,16 @@ export default {
     validateForm() {
       const requiredFields = [
         'name',
+        'nationality',
         'idcard',
         'phone',
         'birthday',
         'gender',
-        'address',
+        'contact_address',
         'email',
         'emergency_name',
         'emergency_phone',
+        'emergency_address',
         'emergency_relation',
         'line_user_id'
       ];
