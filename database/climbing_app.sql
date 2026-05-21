@@ -92,14 +92,16 @@ CREATE TABLE `members` (
   `member_id` bigint(20) NOT NULL AUTO_INCREMENT,
   `member_code` varchar(30) NOT NULL,
   `name` varchar(100) NOT NULL,
+  `nationality` varchar(50) NOT NULL COMMENT '國籍',
   `idcard` varchar(20) NOT NULL,
   `phone` varchar(20) NOT NULL,
   `birthday` date NOT NULL,
   `gender` tinyint(4) NOT NULL,
-  `address` varchar(255) NOT NULL,
+  `contact_address` varchar(255) NOT NULL,
   `email` varchar(255) NOT NULL,
   `emergency_name` varchar(100) NOT NULL,
   `emergency_phone` varchar(20) NOT NULL,
+  `emergency_address` varchar(255) NOT NULL COMMENT '緊急聯絡人地址',
   `emergency_relation` varchar(50) NOT NULL,
   `line_user_id` varchar(100) NOT NULL,
   `is_active` tinyint(1) DEFAULT 1,
@@ -122,8 +124,8 @@ LOCK TABLES `members` WRITE;
 /*!40000 ALTER TABLE `members` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `members` VALUES
-(1,'M000001','王小明','D111111111','0912345678','1995-08-12',1,'桃園市中壢區XX路100號','ming@example.com','王大明','0988777666','父親','U4af4980629xxxxxxx',1,'第一次攀岩，怕高','2026-05-14 21:56:45','2026-05-19 16:53:36'),
-(3,'W000001','王小美','D211111111','0923456789','1995-08-12',2,'桃園市中壢區XX路100號','mei@example.com','王大美','0966677788','母親','U4hf64897654xxxxxxx',1,'好玩','2026-05-15 15:09:59','2026-05-19 16:53:47');
+(1,'M000001','王小明','TW','D111111111','0912345678','1995-08-12',1,'桃園市中壢區XX路100號','ming@example.com','王大明','0988777666','台南市安南區xxx','父親','U4af4980629xxxxxxx',1,'第一次攀岩，怕高','2026-05-14 21:56:45','2026-05-21 16:29:01'),
+(3,'W000001','王小美','TW','D211111111','0923456789','1995-08-12',2,'桃園市中壢區XX路100號','mei@example.com','王大美','0966677788','台南市安南區xxx','母親','U4hf64897654xxxxxxx',1,'好玩','2026-05-15 15:09:59','2026-05-21 16:29:07');
 /*!40000 ALTER TABLE `members` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -218,4 +220,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-21 14:56:04
+-- Dump completed on 2026-05-21 16:30:39
