@@ -165,19 +165,33 @@ DROP TABLE IF EXISTS `staff`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `staff` (
-  `eid` int(10) unsigned zerofill NOT NULL AUTO_INCREMENT COMMENT '員工編號',
+  `eid` int(6) unsigned zerofill NOT NULL AUTO_INCREMENT COMMENT '員工流水號',
   `name` varchar(50) NOT NULL COMMENT '姓名',
+  `nationality` varchar(50) NOT NULL COMMENT '國籍',
   `idcard` varchar(10) NOT NULL COMMENT '身分證字號',
-  `phone` char(10) NOT NULL COMMENT '電話',
-  `address` varchar(255) NOT NULL COMMENT '地址',
-  `role` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '權限: 1員工 2管理人 3老闆',
-  `username` varchar(50) NOT NULL COMMENT '使用者帳號',
-  `password` varchar(255) NOT NULL COMMENT '使用者密碼',
+  `gender` tinyint(4) NOT NULL COMMENT '性別 1男 2女',
+  `birthday` date NOT NULL COMMENT '生日',
+  `phone` char(10) NOT NULL COMMENT '手機號碼',
+  `household_address` varchar(255) NOT NULL COMMENT '戶籍地址',
+  `contact_address` varchar(255) NOT NULL COMMENT '通訊地址',
+  `email` varchar(255) NOT NULL COMMENT '電子郵件',
+  `emergency_name` varchar(100) NOT NULL COMMENT '緊急聯絡人姓名',
+  `emergency_phone` varchar(20) NOT NULL COMMENT '緊急聯絡人手機',
+  `emergency_telphone` varchar(20) NOT NULL COMMENT '緊急聯絡人電話',
+  `emergency_address` varchar(255) NOT NULL COMMENT '緊急聯絡人地址',
+  `emergency_relation` varchar(20) NOT NULL COMMENT '緊急聯絡人關係',
+  `employee_id` varchar(20) NOT NULL COMMENT '公司員工編號',
+  `employee_status` tinyint(3) NOT NULL DEFAULT 1 COMMENT '1在職 2離職 3留職停薪',
+  `employee_title` varchar(20) NOT NULL COMMENT '職稱',
+  `is_active` tinyint(1) DEFAULT 1 COMMENT '帳號是否啟用',
+  `password` varchar(255) NOT NULL COMMENT '登入密碼',
+  `note` text DEFAULT NULL COMMENT '備註',
+  `created_at` datetime DEFAULT current_timestamp() COMMENT '建立時間',
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
   PRIMARY KEY (`eid`),
   UNIQUE KEY `uk_userid` (`idcard`),
-  KEY `idx_name` (`name`),
-  KEY `idx_role` (`role`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+  KEY `idx_name` (`name`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -188,7 +202,9 @@ LOCK TABLES `staff` WRITE;
 /*!40000 ALTER TABLE `staff` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `staff` VALUES
-(0000000001,'andy','D123456789','0911111111','台南市安安區中山路XXXXXXX',1,'','');
+(000001,'andy','TW','D123456789',1,'2000-01-01','0911111111','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','staff0001',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-21 14:48:50'),
+(000002,'asd','TW','D111111234',1,'2000-01-01','0912345789','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','staff0001',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-21 14:49:01'),
+(000003,'andy2','TW','D111234567',1,'2000-02-01','0912345678','台南市安南區xxx','台南市安南區xxx','abdasdf@gamil.com','andy2-1','06-2223334','0913334567','台南市安南區xxx','朋友','staff0001',1,'行政人員',1,'aaaaa','哈哈哈','2026-05-21 14:45:51','2026-05-21 14:45:51');
 /*!40000 ALTER TABLE `staff` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -202,4 +218,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-20 16:05:24
+-- Dump completed on 2026-05-21 14:56:04

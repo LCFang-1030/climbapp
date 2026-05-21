@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const mariadb = require('mariadb');
@@ -22,43 +21,83 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
-// ------------------------------------
 // 取得所有員工（GET）
-// ------------------------------------
 app.get('/api/staff', async (req, res) => {
+  let conn;
   try {
-    const conn = await pool.getConnection();
-    const rows = await conn.query(`SELECT eid, name, role 
-                                  FROM staff ORDER BY eid`);
-    conn.release();
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT eid, name, employee_status, employee_title
+      FROM staff
+      ORDER BY eid
+    `);
     res.json(rows);
   } catch (err) {
     console.error(err);
     res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
   }
 });
 
-// ------------------------------------
 // 新增員工（POST）
-// ------------------------------------
 app.post('/api/staff', async (req, res) => {
+  const staffFields = [
+    'name',
+    'nationality',
+    'idcard',
+    'gender',
+    'birthday',
+    'phone',
+    'household_address',
+    'contact_address',
+    'email',
+    'emergency_name',
+    'emergency_phone',
+    'emergency_telphone',
+    'emergency_address',
+    'emergency_relation',
+    'employee_id',
+    'employee_status',
+    'employee_title',
+    'is_active',
+    'password',
+    'note',
+  ];
+  const requiredFields = staffFields.filter((field) => field !== 'note');
+
+  for (const field of requiredFields) {
+    const value = req.body[field];
+    if (value === null || value === undefined || value.toString().trim() === '') {
+      return res.status(400).send(`缺少必要欄位: ${field}`);
+    }
+  }
+
   const {
     name,
+    nationality,
     idcard,
+    gender,
+    birthday,
     phone,
-    address,
-    role,
-    username,
-    password
+    household_address,
+    contact_address,
+    email,
+    emergency_name,
+    emergency_phone,
+    emergency_telphone,
+    emergency_address,
+    emergency_relation,
+    employee_id,
+    employee_status,
+    employee_title,
+    is_active,
+    password,
+    note,
   } = req.body;
-  
+
   let conn;
   try {
-    // 基本檢查
-    if (!name || !idcard || !phone || !address || !username || !password) {
-      return res.status(400).send('資料不完整');
-    }
-
     conn = await pool.getConnection();
 
     // 檢查身份證是否重複
@@ -68,22 +107,23 @@ app.post('/api/staff', async (req, res) => {
     );
 
     if (exist.length > 0) {
-      return res.status(400).send('身份證字號已存在');
+      return res.status(400).send('身分證字號已存在');
     }
 
-    // 新增員工
     const result = await conn.query(
-      `INSERT INTO staff 
-      (name, idcard, phone, address, role, username, password)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO staff (
+        name, nationality, idcard, gender, birthday, phone,
+        household_address, contact_address, email,
+        emergency_name, emergency_phone, emergency_telphone, emergency_address,
+        emergency_relation, employee_id, employee_status, employee_title, is_active,
+        password, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        name,
-        idcard,
-        phone,
-        address,
-        role || 1,
-        username,
-        password
+        name, nationality, idcard, gender, birthday, phone,
+        household_address, contact_address, email,
+        emergency_name, emergency_phone, emergency_telphone, emergency_address,
+        emergency_relation, employee_id, employee_status, employee_title, is_active,
+        password, note
       ]
     );
 
@@ -99,12 +139,11 @@ app.post('/api/staff', async (req, res) => {
   }
 });
 
-// ------------------------------------
 // 取得所有會員（GET）
-// ------------------------------------
 app.get('/api/members', async (req, res) => {
+  let conn;
   try {
-    const conn = await pool.getConnection();
+    conn = await pool.getConnection();
     const rows = await conn.query(`
       SELECT m.*, COALESCE(active_pass.pass_type, 'single') AS pass_type
       FROM members m
@@ -120,17 +159,16 @@ app.get('/api/members', async (req, res) => {
       ) active_pass ON active_pass.member_id = m.member_id
       ORDER BY m.member_id
     `);
-    conn.release();
     res.json(rows);
   } catch (err) {
     console.error('取得 members 失敗', err);
     res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
   }
 });
 
-// ------------------------------------
 // 新增會員（POST）
-// ------------------------------------
 app.post('/api/members', async (req, res) => {
   const {
     name,
@@ -146,7 +184,7 @@ app.post('/api/members', async (req, res) => {
     line_user_id,
     note
   } = req.body;
-  
+
   let conn;
   try {
     conn = await pool.getConnection();
@@ -159,13 +197,13 @@ app.post('/api/members', async (req, res) => {
 
     // 2. 查詢該性別目前最大的 member_code
     const rows = await conn.query(
-      `SELECT MAX(member_code) as maxCode FROM members WHERE member_code LIKE ?`,
+      'SELECT MAX(member_code) as maxCode FROM members WHERE member_code LIKE ?',
       [`${prefix}%`]
     );
 
+    // 取得後 6 位數字部分並加 1
     let nextNum = 1;
     if (rows[0] && rows[0].maxCode) {
-      // 取得後 6 位數字部分並加 1
       const currentNum = parseInt(rows[0].maxCode.substring(1), 10);
       if (!isNaN(currentNum)) nextNum = currentNum + 1;
     }
@@ -174,8 +212,7 @@ app.post('/api/members', async (req, res) => {
     const member_code = `${prefix}${String(nextNum).padStart(6, '0')}`;
 
     const result = await conn.query(
-      `
-      INSERT INTO members (
+      `INSERT INTO members (
         member_code,
         name,
         idcard,
@@ -189,9 +226,7 @@ app.post('/api/members', async (req, res) => {
         emergency_relation,
         line_user_id,
         note
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         member_code,
         name,
@@ -208,6 +243,7 @@ app.post('/api/members', async (req, res) => {
         note
       ]
     );
+    
     res.json({ success: true, member_id: result.insertId, name, member_code });
   } catch (err) {
     console.error('新增會員失敗:', err);
@@ -217,41 +253,41 @@ app.post('/api/members', async (req, res) => {
   }
 });
 
-// ------------------------------------
 // 修改會員（PUT）
-// ------------------------------------
 app.put('/api/members/:id', async (req, res) => {
   const { id } = req.params;
   const { name, age } = req.body;
 
+  let conn;
   try {
-    const conn = await pool.getConnection();
+    conn = await pool.getConnection();
     await conn.query(
       'UPDATE members SET name = ?, age = ? WHERE id = ?',
       [name, age, id]
     );
-    conn.release();
 
     res.json({ id, name, age });
   } catch (err) {
     res.status(500).send(err);
+  } finally {
+    if (conn) conn.release();
   }
 });
 
-// ------------------------------------
 // 刪除會員（DELETE）
-// ------------------------------------
 app.delete('/api/members/:id', async (req, res) => {
   const { id } = req.params;
 
+  let conn;
   try {
-    const conn = await pool.getConnection();
+    conn = await pool.getConnection();
     await conn.query('DELETE FROM members WHERE id = ?', [id]);
-    conn.release();
 
     res.json({ message: 'deleted', id });
   } catch (err) {
     res.status(500).send(err);
+  } finally {
+    if (conn) conn.release();
   }
 });
 
