@@ -40,6 +40,56 @@ app.get('/api/staff', async (req, res) => {
   }
 });
 
+// 取得所有員工（GET）
+app.get('/api/staff/:eid', async (req, res) => {
+  const { eid } = req.params;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT
+        eid,
+        name,
+        nationality,
+        idcard,
+        gender,
+        birthday,
+        phone,
+        household_address,
+        contact_address,
+        email,
+        emergency_name,
+        emergency_phone,
+        emergency_telphone,
+        emergency_address,
+        emergency_relation,
+        employee_id,
+        employee_status,
+        employee_title,
+        is_active,
+        password,
+        note,
+        created_at,
+        updated_at
+      FROM staff
+      WHERE eid = ?`,
+      [eid]
+    );
+
+    if (!rows.length) {
+      return res.status(404).send('Staff not found');
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 // 新增員工（POST）
 app.post('/api/staff', async (req, res) => {
   const staffFields = [
@@ -129,7 +179,7 @@ app.post('/api/staff', async (req, res) => {
 
     res.json({
       success: true,
-      eid: result.insertId
+      eid: result.insertId,
     });
   } catch (err) {
     console.error(err);
@@ -185,7 +235,7 @@ app.post('/api/members', async (req, res) => {
     emergency_relation,
     line_user_id,
     is_active,
-    note
+    note,
   } = req.body;
 
   let conn;
@@ -249,10 +299,10 @@ app.post('/api/members', async (req, res) => {
         emergency_relation,
         line_user_id,
         is_active,
-        note
+        note,
       ]
     );
-    
+
     res.json({ success: true, member_id: result.insertId, name, member_code });
   } catch (err) {
     console.error('新增會員失敗:', err);

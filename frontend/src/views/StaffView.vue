@@ -12,7 +12,7 @@
             :key="staff.eid"
             :value="staff.eid"
           >
-            {{ staff.name }}（{{ staff.eid }}）
+            {{ staff.name }}（{{ formatValue(staff.eid, 'eid') }}）
           </option>
         </select>
       </label>
@@ -94,24 +94,59 @@
     <div v-if="!isSignupMode">
       <h4>datetime: {{ datetime }}</h4>
 
-      <table border="1">
-      <thead>
-        <tr>
-          <th>員工編號</th>
-          <th>姓名</th>
-          <th>員工狀態</th>
-          <th>職稱</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="staff in staffList" :key="staff.eid">
-          <td>{{ staff.eid }}</td>
-          <td>{{ staff.name }}</td>
-          <td>{{ employeeStatusText(staff.employee_status) }}</td>
-          <td>{{ staff.employee_title }}</td>
-        </tr>
-      </tbody>
+      <table border="1" class="staff-board">
+        <thead>
+          <tr>
+            <th>員工編號</th>
+            <th>姓名</th>
+            <th>員工狀態</th>
+            <th>職稱</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="staff in staffList" :key="staff.eid">
+            <td>
+              <button
+                type="button"
+                class="staff-code-button"
+                @click="openStaffDialog(staff)"
+              >
+                {{ formatValue(staff.eid, 'eid') }}
+              </button>
+            </td>
+            <td>{{ staff.name }}</td>
+            <td>{{ employeeStatusText(staff.employee_status) }}</td>
+            <td>{{ staff.employee_title }}</td>
+          </tr>
+        </tbody>
       </table>
+    </div>
+
+    <div
+      v-if="isDialogOpen"
+      class="staff-dialog-overlay"
+      @click.self="closeStaffDialog"
+    >
+      <aside class="staff-dialog" aria-label="員工詳細資料">
+        <div class="staff-dialog-header">
+          <h2>員工詳細資料</h2>
+          <button
+            type="button"
+            class="dialog-close-button"
+            aria-label="關閉員工詳細資料"
+            @click="closeStaffDialog"
+          >
+            X
+          </button>
+        </div>
+
+        <dl v-if="selectedStaff" class="staff-detail-list">
+          <template v-for="[key, value] in selectedStaffDetails" :key="key">
+            <dt>{{ fieldLabel(key) }}</dt>
+            <dd>{{ formatValue(value, key) }}</dd>
+          </template>
+        </dl>
+      </aside>
     </div>
   </div>
 </template>
@@ -155,13 +190,14 @@ export default {
   data() {
     return {
       x: this.$route.query.x,
-
       username: '',
       password: '',
       islogin: false,
       isSignupMode: false, // 控制顯示登入或註冊表單
       datetime: '',
       staffList: [],
+      selectedStaff: null,
+      isDialogOpen: false,
 
       labels: {
         name: '姓名',
@@ -188,6 +224,60 @@ export default {
 
       form: initialForm(),
     }
+  },
+
+  computed: {
+    staffFields() {
+      return Object.keys(this.labels).filter((key) =>
+        Object.prototype.hasOwnProperty.call(this.form, key)
+      )
+    },
+
+    basicInfoLabels() {
+      return this.pickLabels([
+        'name',
+        'nationality',
+        'idcard',
+        'gender',
+        'birthday',
+        'phone',
+        'household_address',
+        'contact_address',
+        'email',
+        'password',
+      ])
+    },
+
+    emergencyContactLabels() {
+      return this.pickLabels([
+        'emergency_name',
+        'emergency_phone',
+        'emergency_telphone',
+        'emergency_address',
+        'emergency_relation',
+      ])
+    },
+
+    jobRelatedLabels() {
+      return this.pickLabels([
+        'employee_id',
+        'employee_status',
+        'employee_title',
+        'is_active',
+      ])
+    },
+
+    noteLabels() {
+      return this.pickLabels(['note'])
+    },
+
+    selectedStaffDetails() {
+      if (!this.selectedStaff) {
+        return []
+      }
+
+      return Object.entries(this.selectedStaff)
+    },
   },
 
   methods: {
@@ -242,18 +332,13 @@ export default {
 
         const res = await axios.post('/api/staff', payload)
 
-        alert(`註冊成功，員工資料編號: ${res.data.eid}`)
+        alert(`註冊成功，員工資料編號: ${res.data.eid}`);
         this.Clearform();
         this.isSignupMode = false; // 註冊成功後切回登入畫面
         this.fetchStaff(); // 重新取得員工列表，以便登入時選擇新員工
-        console.log(res.data);
       } catch (err) {
         console.error('註冊員工失敗', err);
-        if (err.response?.data) {
-          alert(err.response.data);
-        } else {
-          alert('註冊員工失敗');
-        }
+        alert(err.response?.data || '註冊員工失敗');
       }
     },
 
@@ -278,6 +363,47 @@ export default {
       }
     },
 
+    activeText(status) {
+      switch (Number(status)) {
+        case 1: return '啟用'
+        case 0: return '停用'
+        default: return status
+      }
+    },
+
+    fieldLabel(key) {
+      if (key === 'eid') return '員工編號'
+      return this.labels[key] ?? key
+    },
+
+    formatValue(value, key = '') {
+      if (value === null || value === undefined) {
+        return ''
+      }
+
+      if (key === 'eid') {
+        return String(value).padStart(6, '0')
+      }
+
+      if (key === 'gender') {
+        const genderText = {
+          1: '男',
+          2: '女',
+        }
+        return genderText[Number(value)] ?? value
+      }
+
+      if (key === 'employee_status') {
+        return this.employeeStatusText(value)
+      }
+
+      if (key === 'is_active') {
+        return this.activeText(value)
+      }
+
+      return value
+    },
+
     async fetchStaff() {
       try {
         const res = await axios.get('/api/staff')
@@ -286,54 +412,29 @@ export default {
         console.error('取得 staff 失敗', err)
       }
     },
+
+    async openStaffDialog(staff) {
+      try {
+        const res = await axios.get(`/api/staff/${staff.eid}`)
+        this.selectedStaff = res.data
+        this.isDialogOpen = true
+      } catch (err) {
+        console.error('取得員工詳細資料失敗', err)
+        alert(err.response?.data || '取得員工詳細資料失敗')
+      }
+    },
+
+    closeStaffDialog() {
+      this.isDialogOpen = false
+      this.selectedStaff = null
+    },
   },
 
   watch: {
     $route() {
       this.$nextTick(() => {
-        this.$refs.inputRef?.focus();
-      });
-    },
-  },
-
-  computed: {
-    staffFields() {
-      return Object.keys(this.labels).filter((key) =>
-        Object.prototype.hasOwnProperty.call(this.form, key)
-      )
-    },
-    basicInfoLabels() {
-      return this.pickLabels([
-        'name',
-        'nationality',
-        'idcard',
-        'gender',
-        'birthday',
-        'phone',
-        'household_address',
-        'contact_address',
-        'email',
-        'password',
-      ])
-    },
-    emergencyContactLabels() {
-      return this.pickLabels([
-        'emergency_name',
-        'emergency_phone',
-        'emergency_telphone',
-        'emergency_relation',
-      ])
-    },
-    jobRelatedLabels() {
-      return this.pickLabels([
-        'employee_id',
-        'employee_status',
-        'employee_title',
-        'is_active',
-      ])
-    },
-    noteLabels() {
-      return this.pickLabels(['note'])
+        this.$refs.inputRef?.focus()
+      })
     },
   },
 }
@@ -431,6 +532,125 @@ export default {
 
 .login-button {
   width: fit-content;
+}
+
+.staff-board {
+  border-collapse: collapse;
+  min-width: 560px;
+}
+
+.staff-board th,
+.staff-board td {
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.staff-board th {
+  background: #f2f2f2;
+}
+
+.staff-code-button {
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #1565c0;
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 6px;
+  text-decoration: underline;
+}
+
+.staff-code-button:hover,
+.staff-code-button:focus {
+  background: #e3f2fd;
+  outline: 2px solid #1565c0;
+  outline-offset: 2px;
+}
+
+.staff-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.staff-dialog {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(420px, 90vw);
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  background: #fff;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
+  padding: 20px;
+  animation: slide-in-from-right 0.25s ease;
+}
+
+.staff-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.staff-dialog-header h2 {
+  margin: 0;
+}
+
+.dialog-close-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.dialog-close-button:hover,
+.dialog-close-button:focus {
+  background: #f2f2f2;
+  outline: 2px solid #555;
+  outline-offset: 2px;
+}
+
+.staff-detail-list {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  border-top: 1px solid #cfcfcf;
+  border-left: 1px solid #cfcfcf;
+  margin: 0;
+}
+
+.staff-detail-list dt {
+  background: #f2f2f2;
+  color: #555;
+  font-weight: 700;
+  margin: 0;
+}
+
+.staff-detail-list dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.staff-detail-list dt,
+.staff-detail-list dd {
+  border-right: 1px solid #cfcfcf;
+  border-bottom: 1px solid #cfcfcf;
+  padding: 10px 12px;
+}
+
+@keyframes slide-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
 }
 
 @media (max-width: 768px) {
