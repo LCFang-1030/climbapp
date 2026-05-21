@@ -1,4 +1,3 @@
-
 <template>
   <div class="entry">
     <h1>This is an entry page</h1>
@@ -33,7 +32,7 @@
     </section>
 
     <div>
-    equipment: {{ equipment }} &nbsp;&nbsp;
+      equipment: {{ equipment }} &nbsp;&nbsp;
       <label v-for="item in equipmentOptions" :key="item.id">
         <input type="checkbox" :value="item.id" v-model="equipment" />
         {{ item.label }} ${{ item.price }}
@@ -41,20 +40,19 @@
     </div>
 
     <div>
-    ticket: {{ ticket_type }} &nbsp;&nbsp;
-      <label v-for="ticket in ticketOptions" :key="ticket.id">
-        <input type="radio" :value="ticket.id" v-model="ticket_type" />
-        {{ ticket.label }} ${{ ticket.price }}
+      ticket: {{ ticket_type }} &nbsp;&nbsp;
+      <label v-for="ticket in ticketOptions" :key="ticket.ticket_id">
+        <input type="radio" :value="ticket.ticket_id" v-model="ticket_type" />
+        {{ ticket.ticket_name }} ${{ ticket.ticket_price }}
       </label>
     </div>
-   
+
     <div>price: {{ price_total }}</div>
 
     <hr />
     entry_record: {{ entry_record }}
     {{ islogout }}
     <button @click="Setlogout()"> logout </button>
-
   </div>
 </template>
 
@@ -63,25 +61,20 @@ import axios from 'axios'
 
 export default {
   beforeCreate() {
-    console.log('entry beforeCreate');
-
     if (!localStorage.getItem('islogin')) {
-      // 沒登入就踢回 staff
-      console.log('islogin is false, back to staffView!!');
-      this.$router.push('/staff');
+      this.$router.push('/staff')
     }
   },
 
   mounted() {
-    this.datetime = new Date().toLocaleString('zh-TW', { hour12: false });
+    this.datetime = new Date().toLocaleString('zh-TW', { hour12: false })
     this.fetchMembers()
-
+    this.fetchTickets()
   },
 
   data() {
     return {
       x: this.$route.query.x,
-
       datetime: '',
       member_code: '',
       phone: '',
@@ -92,17 +85,12 @@ export default {
       equipment: [],
       ticket_type: null,
       equipmentOptions: [
-        { id: 'shoes', label: '岩鞋', price: 100 },
-        { id: 'rope', label: '主繩', price: 50 },
+        { id: 'shoes', label: '租鞋', price: 100 },
+        { id: 'rope', label: '繩索', price: 50 },
         { id: 'harness', label: '吊帶', price: 70 },
         { id: 'chalk_bag', label: '粉袋', price: 80 },
       ],
-      ticketOptions: [
-        { id: 'weekday_single', label: '平日單次', price: 250 },
-        { id: 'holiday_single', label: '假日單次', price: 300 },
-        { id: 'night', label: '星光', price: 200 },
-        { id: 'long_term_pass', label: '長期票', price: 0 },
-      ],
+      ticketOptions: [],
       entry_record: {
         datetime: '',
         member_code: '',
@@ -126,10 +114,21 @@ export default {
       this.members = res.data
     },
 
+    async fetchTickets() {
+      try {
+        const res = await axios.get('/api/ticket')
+        this.ticketOptions = Array.isArray(res.data)
+          ? res.data.filter((ticket) => Number(ticket.is_active) !== 0)
+          : []
+      } catch (err) {
+        console.error('取得票種失敗', err)
+      }
+    },
+
     async searchMember() {
       if (!this.phone) {
         this.clearMember()
-        this.searchMessage = '請輸入電話'
+        this.searchMessage = '請輸入電話、會員編號或姓名'
         return
       }
 
@@ -146,14 +145,14 @@ export default {
         if (!member) {
           this.clearMember()
           this.searchMessage = matches.length > 1
-            ? `找到 ${matches.length} 位會員，請輸入更多電話號碼`
-            : '找不到此電話的會員'
+            ? `找到 ${matches.length} 位會員，請輸入更完整的資料`
+            : '找不到符合的會員'
           return
         }
 
         this.setSelectedMember(member)
       } catch (err) {
-        console.error('電話搜尋會員失敗', err)
+        console.error('搜尋會員失敗', err)
         this.clearMember()
         this.searchMessage = '搜尋會員失敗'
       } finally {
@@ -248,8 +247,8 @@ export default {
     },
 
     Setlogout() {
-      localStorage.removeItem('islogin');
-      this.$router.push('/staff');
+      localStorage.removeItem('islogin')
+      this.$router.push('/staff')
     },
 
     clearMember() {
@@ -261,14 +260,14 @@ export default {
       const passLabels = {
         0: 'NONE',
         single: 'NONE',
-        1: '月票',
-        monthly: '月票',
-        2: '季票',
-        quarterly: '季票',
-        3: '半年票',
-        half_year: '半年票',
-        4: '年票',
-        yearly: '年票',
+        1: '月卡',
+        monthly: '月卡',
+        2: '季卡',
+        quarterly: '季卡',
+        3: '半年卡',
+        half_year: '半年卡',
+        4: '年卡',
+        yearly: '年卡',
       }
 
       return passLabels[passType] ?? passType ?? 'NONE'
@@ -324,7 +323,7 @@ export default {
               ? this.formatDate(this.selectedMember.active_pass_expires_at)
               : '',
           ]
-        : ['無長期票']
+        : ['單次票']
 
       return [
         this.member_code,
@@ -335,26 +334,23 @@ export default {
     },
 
     selectedTicket() {
-      return this.ticketOptions.find((ticket) => ticket.id === this.ticket_type)
+      return this.ticketOptions.find((ticket) => ticket.ticket_id === this.ticket_type)
     },
 
     hasLongTermPass() {
       const passType = this.selectedMember?.pass_type
-
       return Boolean(passType && passType !== 'single' && Number(passType) !== 0)
     },
 
     price_total() {
-      const ticketTotal = this.selectedTicket?.price ?? 0
+      const ticketTotal = Number(this.selectedTicket?.ticket_price ?? 0)
       const equipmentTotal = this.equipment.reduce((total, id) => {
         const item = this.equipmentOptions.find((option) => option.id === id)
-
-        return total + (item?.price ?? 0)
+        return total + Number(item?.price ?? 0)
       }, 0)
 
       return ticketTotal + equipmentTotal
     },
-
   },
 
   watch: {
@@ -377,7 +373,6 @@ export default {
       deep: true,
     },
   },
-
 }
 </script>
 

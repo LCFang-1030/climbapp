@@ -40,6 +40,7 @@ export default {
         { label: 'Entry', to: '/entry' },
         { label: 'Account', to: '/account?x=aaa' },
         { label: 'Form', to: '/form' },
+        { label: 'Ticket', to: '/ticket' },
       ],
     }
   },

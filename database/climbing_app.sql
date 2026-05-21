@@ -212,6 +212,47 @@ INSERT INTO `staff` VALUES
 /*!40000 ALTER TABLE `staff` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
+
+--
+-- Table structure for table `ticket`
+--
+
+DROP TABLE IF EXISTS `ticket`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ticket` (
+  `ticket_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '票種ID',
+  `ticket_code` varchar(50) NOT NULL COMMENT '票種代碼',
+  `ticket_name` varchar(100) NOT NULL COMMENT '票種名稱',
+  `ticket_price` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '票價',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用',
+  `note` varchar(255) DEFAULT NULL COMMENT '備註',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
+  PRIMARY KEY (`ticket_id`),
+  UNIQUE KEY `ticket_code` (`ticket_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='票種與票價表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ticket`
+--
+
+LOCK TABLES `ticket` WRITE;
+/*!40000 ALTER TABLE `ticket` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `ticket` VALUES
+(1,'weekday_single','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:35:57'),
+(2,'weekday_early','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:06:13'),
+(3,'holiday_single','假日單次',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:06:13'),
+(4,'starnight','星光票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:06:13'),
+(5,'longterm_pass','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:06:13'),
+(6,'student','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:06:13'),
+(7,'kids','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:06:13'),
+(8,'experience','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-21 10:06:13');
+/*!40000 ALTER TABLE `ticket` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -222,4 +263,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-21 17:03:58
+-- Dump completed on 2026-05-21 18:53:48

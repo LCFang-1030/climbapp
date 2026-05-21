@@ -5,23 +5,20 @@ const mariadb = require('mariadb');
 const app = express();
 const port = 3000;
 
-// 讓前端 http://localhost:8080 可以連線
 app.use(cors());
 app.use(express.json());
 app.set('json replacer', (key, value) =>
   typeof value === 'bigint' ? value.toString() : value
 );
 
-// MariaDB 連線池
 const pool = mariadb.createPool({
   host: 'localhost',
   user: 'climbapp',
   password: 'climbapp',
   database: 'climbing_app',
-  connectionLimit: 5
+  connectionLimit: 5,
 });
 
-// 取得所有員工（GET）
 app.get('/api/staff', async (req, res) => {
   let conn;
   try {
@@ -40,7 +37,6 @@ app.get('/api/staff', async (req, res) => {
   }
 });
 
-// 取得所有員工（GET）
 app.get('/api/staff/:eid', async (req, res) => {
   const { eid } = req.params;
 
@@ -90,7 +86,6 @@ app.get('/api/staff/:eid', async (req, res) => {
   }
 });
 
-// 新增員工（POST）
 app.post('/api/staff', async (req, res) => {
   const staffFields = [
     'name',
@@ -150,7 +145,6 @@ app.post('/api/staff', async (req, res) => {
   try {
     conn = await pool.getConnection();
 
-    // 檢查身份證是否重複
     const exist = await conn.query(
       'SELECT eid FROM staff WHERE idcard = ?',
       [idcard]
@@ -169,11 +163,26 @@ app.post('/api/staff', async (req, res) => {
         password, note
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        name, nationality, idcard, gender, birthday, phone,
-        household_address, contact_address, email,
-        emergency_name, emergency_phone, emergency_telphone, emergency_address,
-        emergency_relation, employee_id, employee_status, employee_title, is_active,
-        password, note
+        name,
+        nationality,
+        idcard,
+        gender,
+        birthday,
+        phone,
+        household_address,
+        contact_address,
+        email,
+        emergency_name,
+        emergency_phone,
+        emergency_telphone,
+        emergency_address,
+        emergency_relation,
+        employee_id,
+        employee_status,
+        employee_title,
+        is_active,
+        password,
+        note,
       ]
     );
 
@@ -189,7 +198,6 @@ app.post('/api/staff', async (req, res) => {
   }
 });
 
-// 取得所有會員（GET）
 app.get('/api/members', async (req, res) => {
   let conn;
   try {
@@ -218,7 +226,6 @@ app.get('/api/members', async (req, res) => {
   }
 });
 
-// 新增會員（POST）
 app.post('/api/members', async (req, res) => {
   const {
     name,
@@ -242,26 +249,24 @@ app.post('/api/members', async (req, res) => {
   try {
     conn = await pool.getConnection();
 
-    // 1. 根據性別決定前綴 (1:男 M, 2:女 W, 其他 O)
     let prefix = 'O';
     const g = Number(gender);
     if (g === 1) prefix = 'M';
     else if (g === 2) prefix = 'W';
 
-    // 2. 查詢該性別目前最大的 member_code
     const rows = await conn.query(
-      'SELECT MAX(member_code) as maxCode FROM members WHERE member_code LIKE ?',
+      'SELECT MAX(member_code) AS maxCode FROM members WHERE member_code LIKE ?',
       [`${prefix}%`]
     );
 
-    // 取得後 6 位數字部分並加 1
     let nextNum = 1;
     if (rows[0] && rows[0].maxCode) {
       const currentNum = parseInt(rows[0].maxCode.substring(1), 10);
-      if (!isNaN(currentNum)) nextNum = currentNum + 1;
+      if (!Number.isNaN(currentNum)) {
+        nextNum = currentNum + 1;
+      }
     }
 
-    // 3. 生成新的 member_code (例如 M000001)
     const member_code = `${prefix}${String(nextNum).padStart(6, '0')}`;
 
     const result = await conn.query(
@@ -305,14 +310,13 @@ app.post('/api/members', async (req, res) => {
 
     res.json({ success: true, member_id: result.insertId, name, member_code });
   } catch (err) {
-    console.error('新增會員失敗:', err);
+    console.error('新增 member 失敗', err);
     res.status(500).send('DB error');
   } finally {
     if (conn) conn.release();
   }
 });
 
-// 修改會員（PUT）
 app.put('/api/members/:id', async (req, res) => {
   const { id } = req.params;
   const { name, age } = req.body;
@@ -333,7 +337,6 @@ app.put('/api/members/:id', async (req, res) => {
   }
 });
 
-// 刪除會員（DELETE）
 app.delete('/api/members/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -345,6 +348,90 @@ app.delete('/api/members/:id', async (req, res) => {
     res.json({ message: 'deleted', id });
   } catch (err) {
     res.status(500).send(err);
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.get('/api/ticket', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT ticket_id, ticket_code, ticket_name, ticket_price, is_active, note
+      FROM ticket
+      ORDER BY ticket_id
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('ticket DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/ticket', async (req, res) => {
+  const {
+    ticket_code,
+    ticket_name,
+    ticket_price,
+    is_active,
+    note,
+  } = req.body;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const result = await conn.query(
+      `INSERT INTO ticket (
+        ticket_code,
+        ticket_name,
+        ticket_price,
+        is_active,
+        note
+      ) VALUES (?, ?, ?, ?, ?)`,
+      [
+        ticket_code,
+        ticket_name,
+        ticket_price,
+        is_active,
+        note,
+      ]
+    );
+
+    res.json({ success: true, ticket_id: result.insertId, ticket_code, ticket_name });
+  } catch (err) {
+    console.error('新增 ticket 失敗', err);
+    res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/ticket/:price', async (req, res) => {
+  const { price } = req.params;
+  const { ticket_id, ticket_price } = req.body;
+
+  let conn;
+  try {
+    if (!ticket_id) {
+      res.status(400).json({ success: false, message: 'ticket_id is required' });
+      return;
+    }
+
+    conn = await pool.getConnection();
+    await conn.query(
+      `UPDATE ticket
+       SET ticket_price = ?
+       WHERE ticket_id = ?`,
+      [ticket_price, ticket_id]
+    );
+
+    res.json({ success: true, ticket_id, ticket_price, previous_price: price });
+  } catch (err) {
+    console.error('更新 ticket 價格失敗', err);
+    res.status(500).send('DB error');
   } finally {
     if (conn) conn.release();
   }
