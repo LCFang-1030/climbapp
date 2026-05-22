@@ -31,7 +31,7 @@ app.get('/api/staff', async (req, res) => {
     res.json(rows);
   } catch (err) {
     console.error(err);
-    res.status(500).send('DB error');
+    res.status(500).send('staff DB error');
   } finally {
     if (conn) conn.release();
   }
@@ -65,7 +65,6 @@ app.get('/api/staff/:eid', async (req, res) => {
         employee_status,
         employee_title,
         is_active,
-        tempEmployeeId,
         note,
         created_at,
         updated_at
@@ -153,7 +152,13 @@ app.post('/api/staff', async (req, res) => {
       return res.status(400).send('身分證字號已存在');
     }
 
-    const tempEmployeeId = `TMP${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    const nextIdRows = await conn.query(
+      `SELECT AUTO_INCREMENT
+       FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'`
+    );
+    const nextEid = Number(nextIdRows[0]?.AUTO_INCREMENT);
+    const employeeId = `${employee_title}${gender}${String(nextEid).padStart(4, '0')}`;
 
     const result = await conn.query(
       `INSERT INTO staff (
@@ -179,22 +184,16 @@ app.post('/api/staff', async (req, res) => {
         emergency_telphone,
         emergency_address,
         emergency_relation,
-        tempEmployeeId,
+        employeeId,
         employee_status,
         employee_title,
         is_active,
-        password,
+        employeeId,
         note,
       ]
     );
 
     const eid = Number(result.insertId);
-    const employeeId = `${employee_title}${gender}${String(eid).padStart(4, '0')}`;
-
-    await conn.query(
-      'UPDATE staff SET employee_id = ?, password = ? WHERE eid = ?',
-      [employeeId, employeeId, eid]
-    );
 
     res.json({
       success: true,
