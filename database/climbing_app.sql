@@ -76,7 +76,7 @@ LOCK TABLES `member_visits` WRITE;
 /*!40000 ALTER TABLE `member_visits` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `member_visits` VALUES
-(1,1,'2026-05-14 21:57:37',NULL,'monthly_pass','2026-05-14 21:57:37');
+(1,1,'2026-05-14 21:57:37',NULL,'TK0005','2026-05-14 21:57:37');
 /*!40000 ALTER TABLE `member_visits` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -149,7 +149,7 @@ CREATE TABLE `rental_equipment` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
   PRIMARY KEY (`rental_id`),
   UNIQUE KEY `rental_code` (`rental_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='裝備租借價格表';
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='裝備租借價格表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -164,7 +164,8 @@ INSERT INTO `rental_equipment` VALUES
 (2,'REN0002','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
 (3,'REN0003','吊帶',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
 (4,'REN0004','粉塊',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
-(5,'REN0005','粉袋',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31');
+(5,'REN0005','粉袋',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
+(6,'REN0006','岩盔',50.00,1,'','2026-05-22 03:03:22','2026-05-22 03:03:22');
 /*!40000 ALTER TABLE `rental_equipment` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -269,7 +270,7 @@ CREATE TABLE `ticket` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
   PRIMARY KEY (`ticket_id`),
   UNIQUE KEY `ticket_code` (`ticket_code`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='票種與票價表';
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='票種與票價表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -287,8 +288,43 @@ INSERT INTO `ticket` VALUES
 (5,'TK0005','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
 (6,'TK0006','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
 (7,'TK0007','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
-(8,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:09');
+(8,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:09'),
+(9,'TK0009','公司票',200.00,1,'','2026-05-22 02:59:39','2026-05-22 02:59:39');
 /*!40000 ALTER TABLE `ticket` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `visit_rental_equipment`
+--
+
+DROP TABLE IF EXISTS `visit_rental_equipment`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `visit_rental_equipment` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `visit_id` bigint(20) NOT NULL,
+  `rental_id` int(11) NOT NULL,
+  `rental_price` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_visit` (`visit_id`),
+  KEY `fk_equipment` (`rental_id`),
+  CONSTRAINT `fk_equipment` FOREIGN KEY (`rental_id`) REFERENCES `rental_equipment` (`rental_id`),
+  CONSTRAINT `fk_visit` FOREIGN KEY (`visit_id`) REFERENCES `member_visits` (`visit_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `visit_rental_equipment`
+--
+
+LOCK TABLES `visit_rental_equipment` WRITE;
+/*!40000 ALTER TABLE `visit_rental_equipment` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `visit_rental_equipment` VALUES
+(1,1,1,50.00,'2026-05-22 13:58:14');
+/*!40000 ALTER TABLE `visit_rental_equipment` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -301,4 +337,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-22 10:48:08
+-- Dump completed on 2026-05-22 14:31:22

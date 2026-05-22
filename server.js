@@ -354,12 +354,15 @@ app.delete('/api/members/:id', async (req, res) => {
 });
 
 app.get('/api/ticket', async (req, res) => {
+  const activeOnly = String(req.query.activeOnly ?? '') === '1';
+
   let conn;
   try {
     conn = await pool.getConnection();
     const rows = await conn.query(`
       SELECT ticket_id, ticket_code, ticket_name, ticket_price, is_active, note
       FROM ticket
+      ${activeOnly ? 'WHERE is_active = 1' : ''}
       ORDER BY ticket_id
     `);
     res.json(rows);
@@ -466,12 +469,15 @@ app.post('/api/ticket/:id/status', async (req, res) => {
 });
 
 app.get('/api/rental_equipment', async (req, res) => {
+  const activeOnly = String(req.query.activeOnly ?? '') === '1';
+
   let conn;
   try {
     conn = await pool.getConnection();
     const rows = await conn.query(`
       SELECT rental_id, rental_code, rental_name, rental_price, is_active, note
       FROM rental_equipment
+      ${activeOnly ? 'WHERE is_active = 1' : ''}
       ORDER BY rental_id
     `);
     res.json(rows);
@@ -572,6 +578,173 @@ app.post('/api/rental_equipment/:id/status', async (req, res) => {
   } catch (err) {
     console.error('更新 rental_equipment 啟用狀態失敗', err);
     res.status(500).send('rental_equipment DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.get('/api/member_visits', async (req, res) => {
+  const scope = String(req.query.scope ?? 'today').toLowerCase();
+  const todayOnly = scope !== 'all';
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT
+        mv.visit_id,
+        mv.member_id,
+        m.member_code,
+        m.name AS member_name,
+        m.phone,
+        mv.visit_type,
+        mv.checkin_time,
+        mv.checkout_time,
+        mv.created_at
+      FROM member_visits mv
+      INNER JOIN members m ON m.member_id = mv.member_id
+      ${todayOnly ? 'WHERE DATE(mv.checkin_time) = CURDATE()' : ''}
+      ORDER BY mv.checkin_time DESC, mv.visit_id DESC`
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('取得 member_visits 失敗', err);
+    res.status(500).send('member_visits DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.get('/api/member_visits/:visitId/rentals', async (req, res) => {
+  const { visitId } = req.params;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT
+        vre.id,
+        vre.visit_id,
+        vre.rental_id,
+        re.rental_code,
+        re.rental_name,
+        vre.rental_price,
+        vre.created_at
+      FROM visit_rental_equipment vre
+      INNER JOIN rental_equipment re ON re.rental_id = vre.rental_id
+      WHERE vre.visit_id = ?
+      ORDER BY vre.id`,
+      [visitId]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('取得 visit_rental_equipment 失敗', err);
+    res.status(500).send('visit_rental_equipment DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/member_visits', async (req, res) => {
+  const memberId = Number(req.body.member_id);
+  const ticketCode = String(req.body.ticket_code ?? '').trim();
+  const rentalCodes = Array.isArray(req.body.rental_codes)
+    ? req.body.rental_codes.map((code) => String(code ?? '').trim()).filter(Boolean)
+    : [];
+
+  if (!memberId) {
+    return res.status(400).json({ success: false, message: 'member_id is required' });
+  }
+
+  if (!ticketCode) {
+    return res.status(400).json({ success: false, message: 'ticket_code is required' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    const memberRows = await conn.query(
+      'SELECT member_id FROM members WHERE member_id = ?',
+      [memberId]
+    );
+
+    if (!memberRows.length) {
+      await conn.rollback();
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
+
+    const ticketRows = await conn.query(
+      `SELECT ticket_id, ticket_code
+       FROM ticket
+       WHERE ticket_code = ? AND is_active = 1`,
+      [ticketCode]
+    );
+
+    if (!ticketRows.length) {
+      await conn.rollback();
+      return res.status(400).json({ success: false, message: 'Ticket not found or inactive' });
+    }
+
+    let rentals = [];
+    if (rentalCodes.length) {
+      const placeholders = rentalCodes.map(() => '?').join(', ');
+      rentals = await conn.query(
+        `SELECT rental_id, rental_code, rental_price
+         FROM rental_equipment
+         WHERE rental_code IN (${placeholders}) AND is_active = 1`,
+        rentalCodes
+      );
+
+      if (rentals.length !== rentalCodes.length) {
+        await conn.rollback();
+        return res.status(400).json({ success: false, message: 'Rental equipment not found or inactive' });
+      }
+    }
+
+    const visitResult = await conn.query(
+      `INSERT INTO member_visits (
+        member_id,
+        checkin_time,
+        visit_type
+      ) VALUES (?, NOW(), ?)`,
+      [memberId, ticketCode]
+    );
+
+    const visitId = Number(visitResult.insertId);
+
+    for (const rentalCode of rentalCodes) {
+      const rental = rentals.find((item) => item.rental_code === rentalCode);
+
+      await conn.query(
+        `INSERT INTO visit_rental_equipment (
+          visit_id,
+          rental_id,
+          rental_price
+        ) VALUES (?, ?, ?)`,
+        [visitId, rental.rental_id, Number(rental.rental_price ?? 0)]
+      );
+    }
+
+    await conn.commit();
+    res.json({
+      success: true,
+      visit_id: visitId,
+      member_id: memberId,
+      ticket_code: ticketCode,
+      rental_codes: rentalCodes,
+    });
+  } catch (err) {
+    if (conn) {
+      try {
+        await conn.rollback();
+      } catch (rollbackError) {
+        console.error('member_visits rollback 失敗', rollbackError);
+      }
+    }
+    console.error('新增 member_visits 失敗', err);
+    res.status(500).send('member_visits DB error');
   } finally {
     if (conn) conn.release();
   }
