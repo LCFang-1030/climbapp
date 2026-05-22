@@ -33,15 +33,16 @@ export default {
     return {
       isNavCollapsed: false,
       navItems: [
-        { label: 'Home', to: '/' },
-        { label: 'About', to: '/about?x=aaa' },
-        { label: 'Staff', to: '/staff' },
-        { label: 'Member', to: '/member?x=aaa' },
-        { label: 'Entry', to: '/entry' },
-        { label: 'Account', to: '/account?x=aaa' },
-        { label: 'Form', to: '/form' },
-        { label: 'Ticket', to: '/ticket' },
-        { label: 'RentalEquipment', to: '/rental' },
+        { label: '首頁', to: '/' },
+        { label: '套票', to: '/ticket' },
+        { label: '裝備', to: '/rental' },
+        { label: '會員', to: '/member?x=aaa' },
+        { label: '會員註冊', to: '/form' },
+        { label: '入場/交易紀錄', to: '/entry' },
+        { label: '員工', to: '/staff' },
+        { label: '財務', to: '/account?x=aaa' },
+        { label: '關於', to: '/about?x=aaa' },
+        
       ],
     }
   },
