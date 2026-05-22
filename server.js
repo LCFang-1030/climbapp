@@ -65,7 +65,7 @@ app.get('/api/staff/:eid', async (req, res) => {
         employee_status,
         employee_title,
         is_active,
-        password,
+        tempEmployeeId,
         note,
         created_at,
         updated_at
@@ -107,7 +107,6 @@ app.post('/api/staff', async (req, res) => {
     'employee_status',
     'employee_title',
     'is_active',
-    'password',
     'note',
   ];
   const requiredFields = staffFields.filter((field) => field !== 'note');
@@ -138,7 +137,6 @@ app.post('/api/staff', async (req, res) => {
     employee_status,
     employee_title,
     is_active,
-    password,
     note,
   } = req.body;
 
@@ -194,8 +192,8 @@ app.post('/api/staff', async (req, res) => {
     const employeeId = `${employee_title}${gender}${String(eid).padStart(4, '0')}`;
 
     await conn.query(
-      'UPDATE staff SET employee_id = ? WHERE eid = ?',
-      [employeeId, eid]
+      'UPDATE staff SET employee_id = ?, password = ? WHERE eid = ?',
+      [employeeId, employeeId, eid]
     );
 
     res.json({

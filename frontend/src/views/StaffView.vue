@@ -47,6 +47,12 @@
                 <label><input type="radio" :value="1" v-model="form.gender" /> 男</label>
                 <label><input type="radio" :value="2" v-model="form.gender" /> 女</label>
               </div>
+              <input
+                v-else-if="key === 'password'"
+                type="text"
+                :value="'註冊後預設為員工編號'"
+                readonly
+              />
               <input v-else-if="key === 'birthday'" type="date" v-model="form[key]" />
               <input v-else type="text" v-model.trim="form[key]" />
             </div>
@@ -323,7 +329,7 @@ export default {
     async SetSignup() {
       try {
         this.errorMsg = ''
-        const requiredFields = this.staffFields.filter((key) => key !== 'note')
+        const requiredFields = this.staffFields.filter((key) => !['note', 'password'].includes(key))
 
         for (const field of requiredFields) {
           const value = this.form[field]
@@ -352,7 +358,9 @@ export default {
         }
 
         const payload = Object.fromEntries(
-          this.staffFields.map((key) => [key, this.form[key]])
+          this.staffFields
+            .filter((key) => key !== 'password')
+            .map((key) => [key, this.form[key]])
         )
 
         const res = await axios.post('/api/staff', payload)
