@@ -1,12 +1,15 @@
 <template>
   <div class="staff">
+    <div v-if="errorMsg" class="error-box">
+      ⚠ {{ errorMsg }}
+    </div>
     <h1>{{ isSignupMode ? '員工註冊' : '員工登入' }}</h1>
 
     <div v-if="!isSignupMode" class="login-form">
       <label class="form-row">
         <span>username:</span>
         <select ref="inputRef" v-model="username">
-          <option disabled value="">請選擇員工</option>
+          <option value="">請選擇員工</option>
           <option
             v-for="staff in staffList"
             :key="staff.eid"
@@ -190,6 +193,7 @@ export default {
   data() {
     return {
       x: this.$route.query.x,
+      errorMsg: '',
       username: '',
       password: '',
       islogin: false,
@@ -282,6 +286,12 @@ export default {
 
   methods: {
     Setlogin() {
+      if (!this.username) {
+        this.errorMsg = '請先選擇員工'
+        return
+      }
+
+      this.errorMsg = ''
       localStorage.setItem('islogin', 'true');
       this.datetime = new Date().toLocaleString('zh-TW', { hour12: false });
 
@@ -292,37 +302,39 @@ export default {
     },
 
     GotoSignup() {
+      this.errorMsg = ''
       this.Clearform();
       this.isSignupMode = true;
     },
 
     async SetSignup() {
       try {
+        this.errorMsg = ''
         const requiredFields = this.staffFields.filter((key) => key !== 'note')
 
         for (const field of requiredFields) {
           const value = this.form[field]
           if (value === null || value === undefined || value.toString().trim() === '') {
-            alert(`請輸入${this.labels[field] || field}`)
+            this.errorMsg = `請輸入${this.labels[field] || field}`
             return
           }
         }
 
         const emailRule = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         if (this.form.email && !emailRule.test(this.form.email)) {
-          alert('Email 格式不正確');
+          this.errorMsg = 'Email 格式不正確'
           return
         }
 
         const idcardRule = /^[A-Z][12]\d{8}$/
         if (this.form.idcard && !idcardRule.test(this.form.idcard)) {
-          alert('身分證字號格式不正確，例如 A123456789');
+          this.errorMsg = '身分證字號格式不正確，例如 A123456789'
           return
         }
 
         const phoneRule = /^09\d{8}$/
         if (this.form.phone && !phoneRule.test(this.form.phone)) {
-          alert('手機格式不正確，例如 09xxxxxxxx');
+          this.errorMsg = '手機格式不正確，例如 09xxxxxxxx'
           return
         }
 
@@ -332,13 +344,14 @@ export default {
 
         const res = await axios.post('/api/staff', payload)
 
+        this.errorMsg = ''
         alert(`註冊成功，員工資料編號: ${res.data.eid}`);
         this.Clearform();
         this.isSignupMode = false; // 註冊成功後切回登入畫面
         this.fetchStaff(); // 重新取得員工列表，以便登入時選擇新員工
       } catch (err) {
         console.error('註冊員工失敗', err);
-        alert(err.response?.data || '註冊員工失敗');
+        this.errorMsg = err.response?.data || '註冊員工失敗'
       }
     },
 
@@ -420,7 +433,7 @@ export default {
         this.isDialogOpen = true
       } catch (err) {
         console.error('取得員工詳細資料失敗', err)
-        alert(err.response?.data || '取得員工詳細資料失敗')
+        this.errorMsg = err.response?.data || '取得員工詳細資料失敗'
       }
     },
 
@@ -445,6 +458,16 @@ export default {
   display: inline-flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.error-box {
+  background: #ffe5e5;
+  color: #d10000;
+  padding: 10px;
+  margin-bottom: 15px;
+  border: 1px solid #ffb3b3;
+  border-radius: 6px;
+  font-weight: bold;
 }
 
 .signup-form-container {
