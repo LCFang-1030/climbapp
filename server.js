@@ -544,6 +544,29 @@ app.post('/api/rental_equipment/:price', async (req, res) => {
   }
 });
 
+app.post('/api/rental_equipment/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.query(
+      `UPDATE rental_equipment
+       SET is_active = ?
+       WHERE rental_id = ?`,
+      [is_active, id]
+    );
+
+    res.json({ success: true, rental_id: id, is_active });
+  } catch (err) {
+    console.error('更新 rental_equipment 啟用狀態失敗', err);
+    res.status(500).send('rental_equipment DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.listen(port, () => {
   console.log(`API running on http://localhost:${port}`);
   const routeStack = app.router?.stack ?? app._router?.stack ?? [];

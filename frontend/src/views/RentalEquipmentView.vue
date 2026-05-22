@@ -6,9 +6,14 @@
         <p class="rental-subtitle">管理租借裝備的名稱、價格與啟用狀態。</p>
       </div>
 
-      <button type="button" class="primary-button" @click="openCreateDialog">
-        新增裝備
-      </button>
+      <div class="rental-header-actions">
+        <button type="button" class="secondary-button" @click="openSettingsDialog">
+          裝備設定
+        </button>
+        <button type="button" class="primary-button" @click="openCreateDialog">
+          新增裝備
+        </button>
+      </div>
     </div>
 
     <p v-if="isLoading" class="rental-message">載入租借裝備中...</p>
@@ -22,7 +27,15 @@
         class="rental-button"
         @click="openPriceDialog(rental)"
       >
-        <span class="rental-button-name">{{ rental.rental_name }}</span>
+        <div class="rental-button-top">
+          <span class="rental-button-name">{{ rental.rental_name }}</span>
+          <span
+            class="rental-status-badge"
+            :class="Number(rental.is_active) === 0 ? 'inactive' : 'active'"
+          >
+            {{ Number(rental.is_active) === 0 ? '未啟用' : '啟用中' }}
+          </span>
+        </div>
         <span class="rental-button-price">${{ formatPrice(rental.rental_price) }}</span>
       </button>
     </div>
@@ -108,8 +121,8 @@
           </label>
 
           <label>
-            是否啟用
-            <select v-model="createForm.is_active">
+            啟用狀態
+            <select v-model.number="createForm.is_active">
               <option :value="1">啟用</option>
               <option :value="0">停用</option>
             </select>
@@ -129,6 +142,49 @@
             </button>
           </div>
         </form>
+      </aside>
+    </div>
+
+    <div
+      v-if="isSettingsDialogOpen"
+      class="rental-dialog-overlay"
+      @click.self="closeDialogs"
+    >
+      <aside class="rental-dialog" aria-label="裝備設定">
+        <div class="rental-dialog-header">
+          <h2>裝備設定</h2>
+          <button
+            type="button"
+            class="dialog-close-button"
+            aria-label="關閉裝備設定視窗"
+            @click="closeDialogs"
+          >
+            X
+          </button>
+        </div>
+
+        <div class="settings-list">
+          <div
+            v-for="rental in rentalList"
+            :key="rental.rental_id"
+            class="settings-item"
+          >
+            <div class="settings-copy">
+              <strong>{{ rental.rental_name }}</strong>
+              <span>{{ rental.rental_code }} | ${{ formatPrice(rental.rental_price) }}</span>
+            </div>
+
+            <button
+              type="button"
+              class="status-toggle-button"
+              :class="Number(rental.is_active) === 0 ? 'inactive' : 'active'"
+              :disabled="isSubmitting"
+              @click="toggleRentalStatus(rental)"
+            >
+              {{ Number(rental.is_active) === 0 ? '設為啟用' : '設為停用' }}
+            </button>
+          </div>
+        </div>
       </aside>
     </div>
   </div>
@@ -154,6 +210,7 @@ export default {
       errorMessage: '',
       isPriceDialogOpen: false,
       isCreateDialogOpen: false,
+      isSettingsDialogOpen: false,
       selectedRentalId: null,
       priceForm: {
         rental_code: '',
@@ -193,11 +250,20 @@ export default {
       }
       this.isPriceDialogOpen = true
       this.isCreateDialogOpen = false
+      this.isSettingsDialogOpen = false
     },
 
     openCreateDialog() {
       this.createForm = createEmptyRentalForm()
       this.isCreateDialogOpen = true
+      this.isPriceDialogOpen = false
+      this.isSettingsDialogOpen = false
+      this.selectedRentalId = null
+    },
+
+    openSettingsDialog() {
+      this.isSettingsDialogOpen = true
+      this.isCreateDialogOpen = false
       this.isPriceDialogOpen = false
       this.selectedRentalId = null
     },
@@ -205,6 +271,7 @@ export default {
     closeDialogs() {
       this.isPriceDialogOpen = false
       this.isCreateDialogOpen = false
+      this.isSettingsDialogOpen = false
       this.selectedRentalId = null
     },
 
@@ -255,6 +322,25 @@ export default {
       }
     },
 
+    async toggleRentalStatus(rental) {
+      this.isSubmitting = true
+      this.errorMessage = ''
+
+      try {
+        await axios.post(`/api/rental_equipment/${rental.rental_id}/status`, {
+          rental_id: rental.rental_id,
+          is_active: Number(rental.is_active) === 0 ? 1 : 0,
+        })
+
+        await this.fetchRentalList()
+      } catch (err) {
+        console.error('更新 rental_equipment 啟用狀態失敗', err)
+        this.errorMessage = '更新裝備啟用狀態失敗'
+      } finally {
+        this.isSubmitting = false
+      }
+    },
+
     formatPrice(price) {
       return Number(price ?? 0)
     },
@@ -279,6 +365,11 @@ export default {
 
 .rental-header h1 {
   margin: 0 0 8px;
+}
+
+.rental-header-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .rental-subtitle {
@@ -323,6 +414,14 @@ export default {
   transform: translateY(-2px);
 }
 
+.rental-button-top {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .rental-button-name {
   color: #1d2733;
   font-size: 18px;
@@ -333,6 +432,26 @@ export default {
   color: #315efb;
   font-size: 24px;
   font-weight: 700;
+}
+
+.rental-status-badge,
+.status-toggle-button {
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.rental-status-badge.active,
+.status-toggle-button.active {
+  background: #e8f7ee;
+  color: #1f7a43;
+}
+
+.rental-status-badge.inactive,
+.status-toggle-button.inactive {
+  background: #fbe9e9;
+  color: #b42318;
 }
 
 .rental-dialog-overlay {
@@ -403,6 +522,42 @@ export default {
   margin-top: 8px;
 }
 
+.settings-list {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-item {
+  align-items: center;
+  border: 1px solid #d7dce2;
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.settings-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-copy span {
+  color: #5b6572;
+  font-size: 14px;
+}
+
+.status-toggle-button {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.status-toggle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .primary-button,
 .secondary-button {
   border-radius: 8px;
@@ -417,15 +572,16 @@ export default {
   color: #fff;
 }
 
-.primary-button:disabled {
+.primary-button:disabled,
+.secondary-button:disabled {
   cursor: not-allowed;
   opacity: 0.7;
 }
 
 .secondary-button {
-  background: #fff;
-  border: 1px solid #cbd5e1;
-  color: #1d2733;
+  background: #315efb;
+  border: 1px solid #315efb;
+  color: #fff;
 }
 
 @media (max-width: 640px) {
@@ -434,8 +590,14 @@ export default {
     flex-direction: column;
   }
 
-  .rental-form-actions {
+  .rental-header-actions,
+  .rental-form-actions,
+  .settings-item {
     flex-direction: column;
+  }
+
+  .status-toggle-button {
+    width: 100%;
   }
 }
 </style>
