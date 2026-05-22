@@ -9,14 +9,9 @@ const routes = [
     component: () => import('../views/HomeView.vue'),
   },
   {
-    path: '/ticket',
-    name: '套票',
-    component: () => import('../views/TicketView.vue'),
-  },
-  {
-    path: '/rental',
-    name: '裝備',
-    component: () => import('../views/RentalEquipmentView.vue'),
+    path: '/ticket-rental',
+    name: '套票/裝備',
+    component: () => import('../views/TicketAndRentalView.vue'),
   },
   {
     path: '/member',

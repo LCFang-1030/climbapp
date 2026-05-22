@@ -34,8 +34,7 @@ export default {
       isNavCollapsed: false,
       navItems: [
         { label: '首頁', to: '/' },
-        { label: '套票', to: '/ticket' },
-        { label: '裝備', to: '/rental' },
+        { label: '套票/裝備', to: '/ticket-rental' },
         { label: '會員', to: '/member?x=aaa' },
         { label: '會員註冊', to: '/form' },
         { label: '入場/交易紀錄', to: '/entry' },
