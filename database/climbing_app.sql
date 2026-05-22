@@ -106,6 +106,7 @@ CREATE TABLE `members` (
   `line_user_id` varchar(100) NOT NULL,
   `is_active` tinyint(1) DEFAULT 1,
   `note` text DEFAULT NULL,
+  `signature_data` longtext DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`member_id`),
@@ -124,9 +125,9 @@ LOCK TABLES `members` WRITE;
 /*!40000 ALTER TABLE `members` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `members` VALUES
-(1,'M000001','王小明','TW','D111111111','0912345678','1995-08-12',1,'桃園市中壢區XX路100號','ming@example.com','王大明','0988777666','台南市安南區xxx','父親','U4af4980629xxxxxxx',1,'第一次攀岩，怕高','2026-05-14 21:56:45','2026-05-21 16:29:01'),
-(3,'W000001','王小美','TW','D211111111','0923456789','1995-08-12',2,'桃園市中壢區XX路100號','mei@example.com','王大美','0966677788','台南市安南區xxx','母親','U4hf64897654xxxxxxx',1,'好玩','2026-05-15 15:09:59','2026-05-21 16:29:07'),
-(5,'M000002','asd','asd','D123456789','0911111111','2026-05-12',1,'wesfg','123ergdr@gmail.com','24134wewer','0911111111','dfgdfg','sdfsdf','sdfsdf',1,'','2026-05-21 16:44:48','2026-05-21 16:44:48');
+(1,'M000001','王小明','TW','D111111111','0912345678','1995-08-12',1,'桃園市中壢區XX路100號','ming@example.com','王大明','0988777666','台南市安南區xxx','父親','U4af4980629xxxxxxx',1,'第一次攀岩，怕高',NULL,'2026-05-14 21:56:45','2026-05-21 16:29:01'),
+(3,'W000001','王小美','TW','D211111111','0923456789','1995-08-12',2,'桃園市中壢區XX路100號','mei@example.com','王大美','0966677788','台南市安南區xxx','母親','U4hf64897654xxxxxxx',1,'好玩',NULL,'2026-05-15 15:09:59','2026-05-21 16:29:07'),
+(5,'M000002','asd','asd','D123456789','0911111111','2026-05-12',1,'wesfg','123ergdr@gmail.com','24134wewer','0911111111','dfgdfg','sdfsdf','sdfsdf',1,'',NULL,'2026-05-21 16:44:48','2026-05-21 16:44:48');
 /*!40000 ALTER TABLE `members` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -337,4 +338,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-22 14:31:22
+-- Dump completed on 2026-05-22 15:07:35

@@ -243,7 +243,12 @@ app.post('/api/members', async (req, res) => {
     line_user_id,
     is_active,
     note,
+    signature_data,
   } = req.body;
+
+  if (!signature_data || signature_data.toString().trim() === '') {
+    return res.status(400).send('請提供手寫簽名');
+  }
 
   let conn;
   try {
@@ -286,8 +291,9 @@ app.post('/api/members', async (req, res) => {
         emergency_relation,
         line_user_id,
         is_active,
-        note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        note,
+        signature_data
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         member_code,
         name,
@@ -305,6 +311,7 @@ app.post('/api/members', async (req, res) => {
         line_user_id,
         is_active,
         note,
+        signature_data,
       ]
     );
 
