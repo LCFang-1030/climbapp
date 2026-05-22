@@ -3,12 +3,17 @@
     <div class="ticket-header">
       <div>
         <h1>票種管理</h1>
-        <p class="ticket-subtitle">點選票種按鈕可修改價格，也可以新增新的票種。</p>
+        <p class="ticket-subtitle">管理票價、新增票種，以及設定票種是否顯示在入場頁。</p>
       </div>
 
-      <button type="button" class="primary-button" @click="openCreateDialog">
-        新增票種
-      </button>
+      <div class="ticket-header-actions">
+        <button type="button" class="secondary-button" @click="openSettingsDialog">
+          票種設定
+        </button>
+        <button type="button" class="primary-button" @click="openCreateDialog">
+          新增票種
+        </button>
+      </div>
     </div>
 
     <p v-if="isLoading" class="ticket-message">載入票種中...</p>
@@ -22,7 +27,15 @@
         class="ticket-button"
         @click="openPriceDialog(ticket)"
       >
-        <span class="ticket-button-name">{{ ticket.ticket_name }}</span>
+        <div class="ticket-button-top">
+          <span class="ticket-button-name">{{ ticket.ticket_name }}</span>
+          <span
+            class="ticket-status-badge"
+            :class="Number(ticket.is_active) === 0 ? 'inactive' : 'active'"
+          >
+            {{ Number(ticket.is_active) === 0 ? '未啟用' : '啟用中' }}
+          </span>
+        </div>
         <span class="ticket-button-price">${{ formatPrice(ticket.ticket_price) }}</span>
       </button>
     </div>
@@ -109,7 +122,7 @@
 
           <label>
             啟用狀態
-            <select v-model="createForm.is_active">
+            <select v-model.number="createForm.is_active">
               <option :value="1">啟用</option>
               <option :value="0">停用</option>
             </select>
@@ -129,6 +142,49 @@
             </button>
           </div>
         </form>
+      </aside>
+    </div>
+
+    <div
+      v-if="isSettingsDialogOpen"
+      class="ticket-dialog-overlay"
+      @click.self="closeDialogs"
+    >
+      <aside class="ticket-dialog" aria-label="票種設定">
+        <div class="ticket-dialog-header">
+          <h2>票種設定</h2>
+          <button
+            type="button"
+            class="dialog-close-button"
+            aria-label="關閉票種設定視窗"
+            @click="closeDialogs"
+          >
+            X
+          </button>
+        </div>
+
+        <div class="settings-list">
+          <div
+            v-for="ticket in ticketList"
+            :key="ticket.ticket_id"
+            class="settings-item"
+          >
+            <div class="settings-copy">
+              <strong>{{ ticket.ticket_name }}</strong>
+              <span>{{ ticket.ticket_code }} · ${{ formatPrice(ticket.ticket_price) }}</span>
+            </div>
+
+            <button
+              type="button"
+              class="status-toggle-button"
+              :class="Number(ticket.is_active) === 0 ? 'inactive' : 'active'"
+              :disabled="isSubmitting"
+              @click="toggleTicketStatus(ticket)"
+            >
+              {{ Number(ticket.is_active) === 0 ? '設為啟用' : '設為停用' }}
+            </button>
+          </div>
+        </div>
       </aside>
     </div>
   </div>
@@ -154,6 +210,7 @@ export default {
       errorMessage: '',
       isPriceDialogOpen: false,
       isCreateDialogOpen: false,
+      isSettingsDialogOpen: false,
       selectedTicketId: null,
       priceForm: {
         ticket_code: '',
@@ -193,11 +250,20 @@ export default {
       }
       this.isPriceDialogOpen = true
       this.isCreateDialogOpen = false
+      this.isSettingsDialogOpen = false
     },
 
     openCreateDialog() {
       this.createForm = createEmptyTicketForm()
       this.isCreateDialogOpen = true
+      this.isPriceDialogOpen = false
+      this.isSettingsDialogOpen = false
+      this.selectedTicketId = null
+    },
+
+    openSettingsDialog() {
+      this.isSettingsDialogOpen = true
+      this.isCreateDialogOpen = false
       this.isPriceDialogOpen = false
       this.selectedTicketId = null
     },
@@ -205,6 +271,7 @@ export default {
     closeDialogs() {
       this.isPriceDialogOpen = false
       this.isCreateDialogOpen = false
+      this.isSettingsDialogOpen = false
       this.selectedTicketId = null
     },
 
@@ -253,6 +320,25 @@ export default {
       }
     },
 
+    async toggleTicketStatus(ticket) {
+      this.isSubmitting = true
+      this.errorMessage = ''
+
+      try {
+        await axios.post(`/api/ticket/${ticket.ticket_id}/status`, {
+          ticket_id: ticket.ticket_id,
+          is_active: Number(ticket.is_active) === 0 ? 1 : 0,
+        })
+
+        await this.fetchTicketList()
+      } catch (err) {
+        console.error('更新 ticket 啟用狀態失敗', err)
+        this.errorMessage = '更新票種設定失敗'
+      } finally {
+        this.isSubmitting = false
+      }
+    },
+
     formatPrice(price) {
       return Number(price ?? 0)
     },
@@ -277,6 +363,11 @@ export default {
 
 .ticket-header h1 {
   margin: 0 0 8px;
+}
+
+.ticket-header-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .ticket-subtitle {
@@ -306,7 +397,7 @@ export default {
   cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   min-height: 110px;
   padding: 18px;
   text-align: left;
@@ -321,6 +412,14 @@ export default {
   transform: translateY(-2px);
 }
 
+.ticket-button-top {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  width: 100%;
+}
+
 .ticket-button-name {
   color: #1d2733;
   font-size: 18px;
@@ -331,6 +430,23 @@ export default {
   color: #315efb;
   font-size: 24px;
   font-weight: 700;
+}
+
+.ticket-status-badge {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.ticket-status-badge.active {
+  background: #e8f7ee;
+  color: #1d7f46;
+}
+
+.ticket-status-badge.inactive {
+  background: #f3f4f6;
+  color: #5b6572;
 }
 
 .ticket-dialog-overlay {
@@ -401,8 +517,34 @@ export default {
   margin-top: 8px;
 }
 
+.settings-list {
+  display: grid;
+  gap: 12px;
+}
+
+.settings-item {
+  align-items: center;
+  border: 1px solid #d7dce2;
+  border-radius: 12px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 14px;
+}
+
+.settings-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.settings-copy span {
+  color: #5b6572;
+  font-size: 14px;
+}
+
 .primary-button,
-.secondary-button {
+.secondary-button,
+.status-toggle-button {
   border-radius: 8px;
   cursor: pointer;
   font: inherit;
@@ -415,15 +557,34 @@ export default {
   color: #fff;
 }
 
-.primary-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
+.secondary-button {
+  background: #315efb;
+  border: 1px solid #315efb;
+  color: #fff;
 }
 
-.secondary-button {
-  background: #fff;
-  border: 1px solid #cbd5e1;
-  color: #1d2733;
+.status-toggle-button {
+  border: 1px solid transparent;
+  min-width: 108px;
+}
+
+.status-toggle-button.active {
+  background: #fff4e5;
+  border-color: #ffd28a;
+  color: #a15c00;
+}
+
+.status-toggle-button.inactive {
+  background: #e8f7ee;
+  border-color: #9bd5ae;
+  color: #1d7f46;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled,
+.status-toggle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 @media (max-width: 640px) {
@@ -432,8 +593,14 @@ export default {
     flex-direction: column;
   }
 
-  .ticket-form-actions {
+  .ticket-header-actions,
+  .ticket-form-actions,
+  .settings-item {
     flex-direction: column;
+  }
+
+  .status-toggle-button {
+    width: 100%;
   }
 }
 </style>

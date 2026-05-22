@@ -437,6 +437,29 @@ app.post('/api/ticket/:price', async (req, res) => {
   }
 });
 
+app.post('/api/ticket/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.query(
+      `UPDATE ticket
+       SET is_active = ?
+       WHERE ticket_id = ?`,
+      [is_active, id]
+    );
+
+    res.json({ success: true, ticket_id: id, is_active });
+  } catch (err) {
+    console.error('更新 ticket 啟用狀態失敗', err);
+    res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.get('/api/rental_equipment', async (req, res) => {
   let conn;
   try {
