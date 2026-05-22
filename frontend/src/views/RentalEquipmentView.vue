@@ -106,11 +106,6 @@
 
         <form class="rental-form" @submit.prevent="submitNewRental">
           <label>
-            裝備代碼
-            <input v-model.trim="createForm.rental_code" type="text" required />
-          </label>
-
-          <label>
             裝備名稱
             <input v-model.trim="createForm.rental_name" type="text" required />
           </label>
@@ -194,7 +189,6 @@
 import axios from 'axios'
 
 const createEmptyRentalForm = () => ({
-  rental_code: '',
   rental_name: '',
   rental_price: 0,
   is_active: 1,
@@ -305,7 +299,6 @@ export default {
 
       try {
         await axios.post('/api/rental_equipment', {
-          rental_code: this.createForm.rental_code,
           rental_name: this.createForm.rental_name,
           rental_price: Number(this.createForm.rental_price),
           is_active: Number(this.createForm.is_active),

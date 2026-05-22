@@ -106,11 +106,6 @@
 
         <form class="ticket-form" @submit.prevent="submitNewTicket">
           <label>
-            票種代碼
-            <input v-model.trim="createForm.ticket_code" type="text" required />
-          </label>
-
-          <label>
             票種名稱
             <input v-model.trim="createForm.ticket_name" type="text" required />
           </label>
@@ -194,7 +189,6 @@
 import axios from 'axios'
 
 const createEmptyTicketForm = () => ({
-  ticket_code: '',
   ticket_name: '',
   ticket_price: 0,
   is_active: 1,
@@ -303,7 +297,6 @@ export default {
 
       try {
         await axios.post('/api/ticket', {
-          ticket_code: this.createForm.ticket_code,
           ticket_name: this.createForm.ticket_name,
           ticket_price: Number(this.createForm.ticket_price),
           is_active: Number(this.createForm.is_active),

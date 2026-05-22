@@ -373,7 +373,6 @@ app.get('/api/ticket', async (req, res) => {
 
 app.post('/api/ticket', async (req, res) => {
   const {
-    ticket_code,
     ticket_name,
     ticket_price,
     is_active,
@@ -383,6 +382,12 @@ app.post('/api/ticket', async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
+    const rows = await conn.query(
+      'SELECT COALESCE(MAX(ticket_id), 0) + 1 AS nextTicketId FROM ticket'
+    );
+    const nextTicketId = Number(rows[0]?.nextTicketId ?? 1);
+    const ticket_code = `TK${String(nextTicketId).padStart(4, '0')}`;
+
     const result = await conn.query(
       `INSERT INTO ticket (
         ticket_code,
@@ -480,7 +485,6 @@ app.get('/api/rental_equipment', async (req, res) => {
 
 app.post('/api/rental_equipment', async (req, res) => {
   const {
-    rental_code,
     rental_name,
     rental_price,
     is_active,
@@ -490,6 +494,12 @@ app.post('/api/rental_equipment', async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
+    const rows = await conn.query(
+      'SELECT COALESCE(MAX(rental_id), 0) + 1 AS nextRentalId FROM rental_equipment'
+    );
+    const nextRentalId = Number(rows[0]?.nextRentalId ?? 1);
+    const rental_code = `REN${String(nextRentalId).padStart(4, '0')}`;
+
     const result = await conn.query(
       `INSERT INTO rental_equipment (
         rental_code,
