@@ -24,7 +24,7 @@ app.get('/api/staff', async (req, res) => {
   try {
     conn = await pool.getConnection();
     const rows = await conn.query(`
-      SELECT eid, name, employee_status, employee_title
+      SELECT eid, name, alias, employee_id, employee_status, employee_title
       FROM staff
       ORDER BY eid
     `);
@@ -47,6 +47,7 @@ app.get('/api/staff/:eid', async (req, res) => {
       `SELECT
         eid,
         name,
+        alias,
         nationality,
         idcard,
         gender,
@@ -89,6 +90,7 @@ app.get('/api/staff/:eid', async (req, res) => {
 app.post('/api/staff', async (req, res) => {
   const staffFields = [
     'name',
+    'alias',
     'nationality',
     'idcard',
     'gender',
@@ -102,7 +104,6 @@ app.post('/api/staff', async (req, res) => {
     'emergency_telphone',
     'emergency_address',
     'emergency_relation',
-    'employee_id',
     'employee_status',
     'employee_title',
     'is_active',
@@ -120,6 +121,7 @@ app.post('/api/staff', async (req, res) => {
 
   const {
     name,
+    alias,
     nationality,
     idcard,
     gender,
@@ -133,7 +135,6 @@ app.post('/api/staff', async (req, res) => {
     emergency_telphone,
     emergency_address,
     emergency_relation,
-    employee_id,
     employee_status,
     employee_title,
     is_active,
@@ -154,16 +155,19 @@ app.post('/api/staff', async (req, res) => {
       return res.status(400).send('身分證字號已存在');
     }
 
+    const tempEmployeeId = `TMP${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
     const result = await conn.query(
       `INSERT INTO staff (
-        name, nationality, idcard, gender, birthday, phone,
+        name, alias, nationality, idcard, gender, birthday, phone,
         household_address, contact_address, email,
         emergency_name, emergency_phone, emergency_telphone, emergency_address,
         emergency_relation, employee_id, employee_status, employee_title, is_active,
         password, note
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
+        alias,
         nationality,
         idcard,
         gender,
@@ -177,7 +181,7 @@ app.post('/api/staff', async (req, res) => {
         emergency_telphone,
         emergency_address,
         emergency_relation,
-        employee_id,
+        tempEmployeeId,
         employee_status,
         employee_title,
         is_active,
@@ -186,9 +190,18 @@ app.post('/api/staff', async (req, res) => {
       ]
     );
 
+    const eid = Number(result.insertId);
+    const employeeId = `${employee_title}${gender}${String(eid).padStart(4, '0')}`;
+
+    await conn.query(
+      'UPDATE staff SET employee_id = ? WHERE eid = ?',
+      [employeeId, eid]
+    );
+
     res.json({
       success: true,
-      eid: result.insertId,
+      eid,
+      employee_id: employeeId,
     });
   } catch (err) {
     console.error(err);

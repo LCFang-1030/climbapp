@@ -210,6 +210,7 @@ DROP TABLE IF EXISTS `staff`;
 CREATE TABLE `staff` (
   `eid` int(6) unsigned zerofill NOT NULL AUTO_INCREMENT COMMENT '員工流水號',
   `name` varchar(50) NOT NULL COMMENT '姓名',
+  `alias` varchar(50) NOT NULL COMMENT '暱稱',
   `nationality` varchar(50) NOT NULL COMMENT '國籍',
   `idcard` varchar(10) NOT NULL COMMENT '身分證字號',
   `gender` tinyint(4) NOT NULL COMMENT '性別 1男 2女',
@@ -246,9 +247,9 @@ LOCK TABLES `staff` WRITE;
 /*!40000 ALTER TABLE `staff` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `staff` VALUES
-(000001,'andy','TW','D123456789',1,'2000-01-01','0911111111','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','staff0001',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-21 14:48:50'),
-(000002,'asd','TW','D111111234',1,'2000-01-01','0912345789','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','staff0002',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-21 17:01:44'),
-(000003,'andy2','TW','D111234567',1,'2000-02-01','0912345678','台南市安南區xxx','台南市安南區xxx','abdasdf@gamil.com','andy2-1','06-2223334','0913334567','台南市安南區xxx','朋友','staff0003',1,'行政人員',1,'aaaaa','哈哈哈','2026-05-21 14:45:51','2026-05-21 17:01:52');
+(000001,'方1','fang1','TW','D123456789',1,'2000-01-01','0911111111','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','S10001',1,'管理人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-22 16:35:32'),
+(000002,'方2','fang2','TW','D111111234',1,'2000-01-01','0912345789','台南市安南區xxx','台南市安南區xxx','andy@example.com','媽媽','0911222333','06-2223333','台南市安南區xxx','母子','O10002',1,'行政人員',1,'aaaaa','補齊資料','2026-05-21 12:08:52','2026-05-22 16:35:32'),
+(000003,'方3','fang3','TW','D111234567',1,'2000-02-01','0912345678','台南市安南區xxx','台南市安南區xxx','abdasdf@gamil.com','andy2-1','06-2223334','0913334567','台南市安南區xxx','朋友','L10003',1,'定線員',1,'aaaaa','哈哈哈','2026-05-21 14:45:51','2026-05-22 16:35:32');
 /*!40000 ALTER TABLE `staff` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -338,4 +339,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-22 15:07:35
+-- Dump completed on 2026-05-22 16:50:39

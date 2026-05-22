@@ -3,19 +3,24 @@
     <div v-if="errorMsg" class="error-box">
       ⚠ {{ errorMsg }}
     </div>
+
     <h1>{{ isSignupMode ? '員工註冊' : '員工登入' }}</h1>
 
     <div v-if="!isSignupMode" class="login-form">
       <label class="form-row">
         <span>username:</span>
-        <select ref="inputRef" v-model="username">
+        <select
+          ref="inputRef"
+          v-model="username"
+          :class="{ 'placeholder-selected': !username }"
+        >
           <option value="">請選擇員工</option>
           <option
             v-for="staff in staffList"
             :key="staff.eid"
-            :value="staff.eid"
+            :value="staff.employee_id"
           >
-            {{ staff.name }}（{{ formatValue(staff.eid, 'eid') }}）
+            {{ staff.alias }} ({{ staff.employee_id }})
           </option>
         </select>
       </label>
@@ -26,8 +31,8 @@
       </label>
 
       <div class="login-action">
-        <button class="login-button" @click="GotoSignup()"> Sign up </button>
-        <button class="login-button" @click="Setlogin()"> Login </button>
+        <button class="login-button" @click="GotoSignup()">Sign up</button>
+        <button class="login-button" @click="Setlogin()">Login</button>
       </div>
     </div>
 
@@ -63,7 +68,13 @@
           <div class="form-section">
             <div v-for="(label, key) in jobRelatedLabels" :key="key" class="form-row">
               <span>{{ label }}:</span>
-              <select v-if="key === 'employee_status'" v-model="form.employee_status">
+              <select v-if="key === 'employee_title'" v-model="form.employee_title">
+                <option value="">請選擇職稱</option>
+                <option value="S">管理人員 (S)</option>
+                <option value="O">行政人員 (O)</option>
+                <option value="L">定線員 (L)</option>
+              </select>
+              <select v-else-if="key === 'employee_status'" v-model="form.employee_status">
                 <option value="1">在職</option>
                 <option value="2">離職</option>
                 <option value="3">留職停薪</option>
@@ -89,8 +100,8 @@
       </div>
 
       <div class="login-action signup-action">
-        <button class="login-button" @click="isSignupMode = false"> 返回 </button>
-        <button class="login-button" @click="SetSignup()"> Set Signup </button>
+        <button class="login-button" @click="BackToLogin()">返回</button>
+        <button class="login-button" @click="SetSignup()">Set Signup</button>
       </div>
     </div>
 
@@ -102,8 +113,9 @@
           <tr>
             <th>員工編號</th>
             <th>姓名</th>
+            <th>暱稱</th>
+            <th>員工職稱</th>
             <th>員工狀態</th>
-            <th>職稱</th>
           </tr>
         </thead>
         <tbody>
@@ -114,12 +126,13 @@
                 class="staff-code-button"
                 @click="openStaffDialog(staff)"
               >
-                {{ formatValue(staff.eid, 'eid') }}
+                {{ staff.employee_id }}
               </button>
             </td>
             <td>{{ staff.name }}</td>
+            <td>{{ staff.alias }}</td>
+            <td>{{ employeeTitleText(staff.employee_title) }}</td>
             <td>{{ employeeStatusText(staff.employee_status) }}</td>
-            <td>{{ staff.employee_title }}</td>
           </tr>
         </tbody>
       </table>
@@ -159,6 +172,7 @@ import axios from 'axios'
 
 const initialForm = () => ({
   name: '',
+  alias: '',
   nationality: '',
   idcard: '',
   gender: '',
@@ -172,9 +186,8 @@ const initialForm = () => ({
   emergency_telphone: '',
   emergency_address: '',
   emergency_relation: '',
-  employee_id: '',
-  employee_status: '1',
   employee_title: '',
+  employee_status: '1',
   is_active: '1',
   password: '',
   note: '',
@@ -182,12 +195,8 @@ const initialForm = () => ({
 
 export default {
   mounted() {
-    console.log('staff mounted');
-
-    //UI控制
-    // 頁面一出現，就把游標自動指向這裡
-    this.$refs.inputRef?.focus();
-    this.fetchStaff();
+    this.$refs.inputRef?.focus()
+    this.fetchStaff()
   },
 
   data() {
@@ -197,7 +206,7 @@ export default {
       username: '',
       password: '',
       islogin: false,
-      isSignupMode: false, // 控制顯示登入或註冊表單
+      isSignupMode: false,
       datetime: '',
       staffList: [],
       selectedStaff: null,
@@ -205,6 +214,7 @@ export default {
 
       labels: {
         name: '姓名',
+        alias: '暱稱',
         nationality: '國籍',
         idcard: '身分證字號',
         gender: '性別',
@@ -218,9 +228,8 @@ export default {
         emergency_telphone: '緊急聯絡人電話',
         emergency_address: '緊急聯絡人地址',
         emergency_relation: '關係',
-        employee_id: '員工編號',
+        employee_title: '員工職稱',
         employee_status: '員工狀態',
-        employee_title: '職稱',
         is_active: '帳號狀態',
         password: '密碼',
         note: '備註',
@@ -240,6 +249,7 @@ export default {
     basicInfoLabels() {
       return this.pickLabels([
         'name',
+        'alias',
         'nationality',
         'idcard',
         'gender',
@@ -264,9 +274,8 @@ export default {
 
     jobRelatedLabels() {
       return this.pickLabels([
-        'employee_id',
-        'employee_status',
         'employee_title',
+        'employee_status',
         'is_active',
       ])
     },
@@ -292,19 +301,23 @@ export default {
       }
 
       this.errorMsg = ''
-      localStorage.setItem('islogin', 'true');
-      this.datetime = new Date().toLocaleString('zh-TW', { hour12: false });
+      localStorage.setItem('islogin', 'true')
+      this.datetime = new Date().toLocaleString('zh-TW', { hour12: false })
 
       setTimeout(() => {
-        console.log('login success, changed');
-        this.$router.push('/entry');
-      }, 500);
+        this.$router.push('/entry')
+      }, 500)
     },
 
     GotoSignup() {
       this.errorMsg = ''
-      this.Clearform();
-      this.isSignupMode = true;
+      this.Clearform()
+      this.isSignupMode = true
+    },
+
+    BackToLogin() {
+      this.errorMsg = ''
+      this.isSignupMode = false
     },
 
     async SetSignup() {
@@ -345,12 +358,12 @@ export default {
         const res = await axios.post('/api/staff', payload)
 
         this.errorMsg = ''
-        alert(`註冊成功，員工資料編號: ${res.data.eid}`);
-        this.Clearform();
-        this.isSignupMode = false; // 註冊成功後切回登入畫面
-        this.fetchStaff(); // 重新取得員工列表，以便登入時選擇新員工
+        alert(`註冊成功，員工編號: ${res.data.employee_id}`)
+        this.Clearform()
+        this.isSignupMode = false
+        this.fetchStaff()
       } catch (err) {
-        console.error('註冊員工失敗', err);
+        console.error('註冊員工失敗', err)
         this.errorMsg = err.response?.data || '註冊員工失敗'
       }
     },
@@ -368,25 +381,39 @@ export default {
     },
 
     employeeStatusText(status) {
-      switch (Number(status)) {
-        case 1: return '在職'
-        case 2: return '離職'
-        case 3: return '留職停薪'
-        default: return '未知'
+      const map = {
+        1: '在職',
+        2: '離職',
+        3: '留職停薪',
       }
+      return map[Number(status)] ?? '未知'
+    },
+
+    employeeTitleText(title) {
+      const map = {
+        S: '管理人員 (S)',
+        O: '行政人員 (O)',
+        L: '定線員 (L)',
+      }
+      return map[title] ?? title
     },
 
     activeText(status) {
-      switch (Number(status)) {
-        case 1: return '啟用'
-        case 0: return '停用'
-        default: return status
+      const map = {
+        1: '啟用',
+        0: '停用',
       }
+      return map[Number(status)] ?? status
     },
 
     fieldLabel(key) {
-      if (key === 'eid') return '員工編號'
-      return this.labels[key] ?? key
+      const extraLabels = {
+        eid: '流水號',
+        employee_id: '員工編號',
+        created_at: '建立時間',
+        updated_at: '更新時間',
+      }
+      return extraLabels[key] ?? this.labels[key] ?? key
     },
 
     formatValue(value, key = '') {
@@ -395,7 +422,7 @@ export default {
       }
 
       if (key === 'eid') {
-        return String(value).padStart(6, '0')
+        return String(value).padStart(4, '0')
       }
 
       if (key === 'gender') {
@@ -410,6 +437,10 @@ export default {
         return this.employeeStatusText(value)
       }
 
+      if (key === 'employee_title') {
+        return this.employeeTitleText(value)
+      }
+
       if (key === 'is_active') {
         return this.activeText(value)
       }
@@ -422,7 +453,8 @@ export default {
         const res = await axios.get('/api/staff')
         this.staffList = res.data
       } catch (err) {
-        console.error('取得 staff 失敗', err)
+        console.error('取得員工資料失敗', err)
+        this.errorMsg = '取得員工資料失敗'
       }
     },
 
@@ -444,6 +476,12 @@ export default {
   },
 
   watch: {
+    username(newValue) {
+      if (newValue) {
+        this.errorMsg = ''
+      }
+    },
+
     $route() {
       this.$nextTick(() => {
         this.$refs.inputRef?.focus()
@@ -522,6 +560,18 @@ export default {
 .form-row textarea {
   width: 100%;
   box-sizing: border-box;
+}
+
+.placeholder-selected {
+  color: #808080;
+}
+
+.placeholder-selected option {
+  color: #111;
+}
+
+.placeholder-selected option[value=""] {
+  color: #808080;
 }
 
 .radio-row {
