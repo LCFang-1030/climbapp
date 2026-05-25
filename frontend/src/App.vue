@@ -74,7 +74,7 @@ export default {
       },
       navItems: [
         { type: 'link', label: '首頁', to: '/' },
-        { type: 'link', label: '入場/交易紀錄', to: '/entry' },
+        { type: 'link', label: '入場', to: '/entry' },
         {
           type: 'group',
           key: 'records',

@@ -10,7 +10,7 @@ const routes = [
   },
   {
     path: '/entry',
-    name: '入場/交易紀錄',
+    name: '入場',
     component: () => import('../views/EntryView.vue'),
     meta: { requiresAuth: true },   // 👈 標記需要登入
   },
