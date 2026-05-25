@@ -133,6 +133,40 @@ UNLOCK TABLES;
 commit;
 
 --
+-- Table structure for table `product`
+--
+
+DROP TABLE IF EXISTS `product`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product` (
+  `product_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '商品ID',
+  `product_code` varchar(50) NOT NULL COMMENT '商品代碼',
+  `product_name` varchar(100) NOT NULL COMMENT '商品名稱',
+  `product_price` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '商品價格',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用',
+  `note` varchar(255) DEFAULT NULL COMMENT '備註',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
+  PRIMARY KEY (`product_id`),
+  UNIQUE KEY `product_code` (`product_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='商品價格表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `product`
+--
+
+LOCK TABLES `product` WRITE;
+/*!40000 ALTER TABLE `product` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `product` VALUES
+(1,'PROD001','白貼',0.00,1,NULL,'2026-05-25 03:48:54','2026-05-25 03:48:54');
+/*!40000 ALTER TABLE `product` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `rental_equipment`
 --
 
@@ -161,12 +195,12 @@ LOCK TABLES `rental_equipment` WRITE;
 /*!40000 ALTER TABLE `rental_equipment` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `rental_equipment` VALUES
-(1,'REN0001','岩鞋',20.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
-(2,'REN0002','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
-(3,'REN0003','吊帶',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
-(4,'REN0004','粉塊',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
-(5,'REN0005','粉袋',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-22 02:33:31'),
-(6,'REN0006','岩盔',50.00,1,'','2026-05-22 03:03:22','2026-05-22 03:03:22');
+(1,'REN0001','岩鞋',20.00,1,NULL,'2026-05-21 10:57:27','2026-05-25 03:52:48'),
+(2,'REN0002','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-25 03:52:49'),
+(3,'REN0003','吊帶',0.00,0,NULL,'2026-05-21 10:57:27','2026-05-22 10:02:04'),
+(4,'REN0004','粉塊',0.00,0,NULL,'2026-05-21 10:57:27','2026-05-22 10:02:02'),
+(5,'REN0005','粉袋',0.00,0,NULL,'2026-05-21 10:57:27','2026-05-22 10:02:02'),
+(6,'REN0006','岩盔',50.00,0,'','2026-05-22 03:03:22','2026-05-22 10:02:03');
 /*!40000 ALTER TABLE `rental_equipment` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -283,15 +317,15 @@ LOCK TABLES `ticket` WRITE;
 /*!40000 ALTER TABLE `ticket` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `ticket` VALUES
-(1,'TK0001','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:30:52'),
-(2,'TK0002','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
-(3,'TK0003','假日單次',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
-(4,'TK0004','星光票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
-(5,'TK0005','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
-(6,'TK0006','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
-(7,'TK0007','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:07'),
-(8,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-22 02:31:09'),
-(9,'TK0009','公司票',200.00,1,'','2026-05-22 02:59:39','2026-05-22 02:59:39');
+(1,'TK0001','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-05-25 03:52:46'),
+(2,'TK0002','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-25 03:52:47'),
+(3,'TK0003','假日單次',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:08'),
+(4,'TK0004','星光票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:08'),
+(5,'TK0005','長期票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:10'),
+(6,'TK0006','學生票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:11'),
+(7,'TK0007','兒童票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:11'),
+(8,'TK0008','體驗票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:11'),
+(9,'TK0009','公司票',200.00,0,'','2026-05-22 02:59:39','2026-05-22 10:02:12');
 /*!40000 ALTER TABLE `ticket` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -339,4 +373,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-22 16:58:25
+-- Dump completed on 2026-05-25 14:13:16
