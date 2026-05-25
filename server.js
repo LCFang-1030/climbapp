@@ -600,6 +600,121 @@ app.post('/api/rental_equipment/:id/status', async (req, res) => {
   }
 });
 
+app.get('/api/product', async (req, res) => {
+  const activeOnly = String(req.query.activeOnly ?? '') === '1';
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT product_id, product_code, product_name, product_price, is_active, note
+      FROM product
+      ${activeOnly ? 'WHERE is_active = 1' : ''}
+      ORDER BY product_id
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('product DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/product', async (req, res) => {
+  const {
+    product_name,
+    product_price,
+    is_active,
+    note,
+  } = req.body;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      'SELECT COALESCE(MAX(product_id), 0) + 1 AS nextProductId FROM product'
+    );
+    const nextProductId = Number(rows[0]?.nextProductId ?? 1);
+    const product_code = `TK${String(nextProductId).padStart(4, '0')}`;
+
+    const result = await conn.query(
+      `INSERT INTO product (
+        product_code,
+        product_name,
+        product_price,
+        is_active,
+        note
+      ) VALUES (?, ?, ?, ?, ?)`,
+      [
+        product_code,
+        product_name,
+        product_price,
+        is_active,
+        note,
+      ]
+    );
+
+    res.json({ success: true, product_id: result.insertId, product_code, product_name });
+  } catch (err) {
+    console.error('新增 product 失敗', err);
+    res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/product/:price', async (req, res) => {
+  const { price } = req.params;
+  const { product_id, product_price } = req.body;
+
+  let conn;
+  try {
+    if (!product_id) {
+      res.status(400).json({ success: false, message: 'product_id is required' });
+      return;
+    }
+
+    conn = await pool.getConnection();
+    await conn.query(
+      `UPDATE product
+       SET product_price = ?
+       WHERE product_id = ?`,
+      [product_price, product_id]
+    );
+
+    res.json({ success: true, product_id, product_price, previous_price: price });
+  } catch (err) {
+    console.error('更新 product 價格失敗', err);
+    res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/product/:id/status', async (req, res) => {
+  const { id } = req.params;
+  const { is_active } = req.body;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.query(
+      `UPDATE product
+       SET is_active = ?
+       WHERE product_id = ?`,
+      [is_active, id]
+    );
+
+    res.json({ success: true, product_id: id, is_active });
+  } catch (err) {
+    console.error('更新 product 啟用狀態失敗', err);
+    res.status(500).send('DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.get('/api/member_visits', async (req, res) => {
   const scope = String(req.query.scope ?? 'today').toLowerCase();
   const todayOnly = scope !== 'all';

@@ -26,9 +26,9 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/ticket-rental',
-    name: '套票/裝備',
-    component: () => import('../views/TicketAndRentalView.vue'),
+    path: '/items',
+    name: '單品',
+    component: () => import('../views/ItemsView.vue'),
   },
   {
     path: '/activity',

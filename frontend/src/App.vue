@@ -89,7 +89,7 @@ export default {
           key: 'products',
           label: '商品相關',
           children: [
-            { label: '套票/裝備', to: '/ticket-rental' },
+            { label: '單品', to: '/items' },
             { label: '活動', to: '/activity' },
           ],
         },

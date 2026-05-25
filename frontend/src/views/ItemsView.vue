@@ -1,5 +1,5 @@
 <template>
-  <div class="ticket-rental-view">
+  <div class="management-view">
     <section class="management-section">
       <div class="section-header">
         <div>
@@ -84,6 +84,50 @@
             </span>
           </div>
           <span class="item-price">${{ formatPrice(rental.rental_price) }}</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="management-section">
+      <div class="section-header">
+        <div>
+          <h2>商品</h2>
+          <p class="section-subtitle">管理商品價格、建立品項與切換啟用狀態。</p>
+        </div>
+
+        <div class="section-actions">
+          <button type="button" class="secondary-button" @click="openProductSettingsDialog">
+            商品設定
+          </button>
+          <button type="button" class="primary-button" @click="openProductCreateDialog">
+            新增商品
+          </button>
+        </div>
+      </div>
+
+      <p v-if="productState.isLoading" class="section-message">載入商品資料中...</p>
+      <p v-else-if="productState.errorMessage" class="section-message error">
+        {{ productState.errorMessage }}
+      </p>
+
+      <div v-else class="card-list">
+        <button
+          v-for="product in productState.list"
+          :key="product.product_id"
+          type="button"
+          class="item-card"
+          @click="openProductPriceDialog(product)"
+        >
+          <div class="item-card-top">
+            <span class="item-name">{{ product.product_name }}</span>
+            <span
+              class="status-badge"
+              :class="Number(product.is_active) === 0 ? 'inactive' : 'active'"
+            >
+              {{ Number(product.is_active) === 0 ? '停用中' : '啟用中' }}
+            </span>
+          </div>
+          <span class="item-price">${{ formatPrice(product.product_price) }}</span>
         </button>
       </div>
     </section>
@@ -393,6 +437,159 @@
         </div>
       </aside>
     </div>
+
+    <div
+      v-if="productState.isPriceDialogOpen"
+      class="dialog-overlay"
+      @click.self="closeProductDialogs"
+    >
+      <aside class="side-dialog" aria-label="調整商品價格">
+        <div class="dialog-header">
+          <h3>調整商品價格</h3>
+          <button
+            type="button"
+            class="dialog-close-button"
+            aria-label="關閉調整商品價格視窗"
+            @click="closeProductDialogs"
+          >
+            X
+          </button>
+        </div>
+
+        <form class="form-grid" @submit.prevent="submitProductPriceUpdate">
+          <label>
+            商品代碼
+            <input :value="productState.priceForm.product_code" type="text" disabled />
+          </label>
+
+          <label>
+            商品名稱
+            <input :value="productState.priceForm.product_name" type="text" disabled />
+          </label>
+
+          <label>
+            售價
+            <input
+              v-model.number="productState.priceForm.product_price"
+              type="number"
+              min="0"
+              required
+            />
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="primary-button" :disabled="productState.isSubmitting">
+              {{ productState.isSubmitting ? '儲存中...' : '儲存價格' }}
+            </button>
+            <button type="button" class="secondary-button" @click="closeProductDialogs">
+              取消
+            </button>
+          </div>
+        </form>
+      </aside>
+    </div>
+
+    <div
+      v-if="productState.isCreateDialogOpen"
+      class="dialog-overlay"
+      @click.self="closeProductDialogs"
+    >
+      <aside class="side-dialog" aria-label="新增商品">
+        <div class="dialog-header">
+          <h3>新增商品</h3>
+          <button
+            type="button"
+            class="dialog-close-button"
+            aria-label="關閉新增商品視窗"
+            @click="closeProductDialogs"
+          >
+            X
+          </button>
+        </div>
+
+        <form class="form-grid" @submit.prevent="submitNewProduct">
+          <label>
+            商品名稱
+            <input v-model.trim="productState.createForm.product_name" type="text" required />
+          </label>
+
+          <label>
+            售價
+            <input
+              v-model.number="productState.createForm.product_price"
+              type="number"
+              min="0"
+              required
+            />
+          </label>
+
+          <label>
+            啟用狀態
+            <select v-model.number="productState.createForm.is_active">
+              <option :value="1">啟用</option>
+              <option :value="0">停用</option>
+            </select>
+          </label>
+
+          <label>
+            備註
+            <textarea v-model.trim="productState.createForm.note" rows="3" />
+          </label>
+
+          <div class="form-actions">
+            <button type="submit" class="primary-button" :disabled="productState.isSubmitting">
+              {{ productState.isSubmitting ? '建立中...' : '建立商品' }}
+            </button>
+            <button type="button" class="secondary-button" @click="closeProductDialogs">
+              取消
+            </button>
+          </div>
+        </form>
+      </aside>
+    </div>
+
+    <div
+      v-if="productState.isSettingsDialogOpen"
+      class="dialog-overlay"
+      @click.self="closeProductDialogs"
+    >
+      <aside class="side-dialog" aria-label="商品設定">
+        <div class="dialog-header">
+          <h3>商品設定</h3>
+          <button
+            type="button"
+            class="dialog-close-button"
+            aria-label="關閉商品設定視窗"
+            @click="closeProductDialogs"
+          >
+            X
+          </button>
+        </div>
+
+        <div class="settings-list">
+          <div
+            v-for="product in productState.list"
+            :key="product.product_id"
+            class="settings-item"
+          >
+            <div class="settings-copy">
+              <strong>{{ product.product_name }}</strong>
+              <span>{{ product.product_code }} | ${{ formatPrice(product.product_price) }}</span>
+            </div>
+
+            <button
+              type="button"
+              class="status-toggle-button"
+              :class="Number(product.is_active) === 0 ? 'inactive' : 'active'"
+              :disabled="productState.isSubmitting"
+              @click="toggleProductStatus(product)"
+            >
+              {{ Number(product.is_active) === 0 ? '設為啟用' : '設為停用' }}
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -409,6 +606,13 @@ const createEmptyTicketForm = () => ({
 const createEmptyRentalForm = () => ({
   rental_name: '',
   rental_price: 0,
+  is_active: 1,
+  note: '',
+})
+
+const createEmptyProductForm = () => ({
+  product_name: '',
+  product_price: 0,
   is_active: 1,
   note: '',
 })
@@ -448,12 +652,29 @@ export default {
         },
         createForm: createEmptyRentalForm(),
       },
+      productState: {
+        list: [],
+        isLoading: false,
+        isSubmitting: false,
+        errorMessage: '',
+        isPriceDialogOpen: false,
+        isCreateDialogOpen: false,
+        isSettingsDialogOpen: false,
+        selectedId: null,
+        priceForm: {
+          product_code: '',
+          product_name: '',
+          product_price: 0,
+        },
+        createForm: createEmptyProductForm(),
+      },
     }
   },
 
   mounted() {
     this.fetchTicketList()
     this.fetchRentalList()
+    this.fetchProductList()
   },
 
   methods: {
@@ -484,6 +705,21 @@ export default {
         this.rentalState.errorMessage = '租借裝備資料讀取失敗'
       } finally {
         this.rentalState.isLoading = false
+      }
+    },
+
+    async fetchProductList() {
+      this.productState.isLoading = true
+      this.productState.errorMessage = ''
+
+      try {
+        const res = await axios.get('/api/product')
+        this.productState.list = Array.isArray(res.data) ? res.data : []
+      } catch (err) {
+        console.error('Failed to fetch product list', err)
+        this.productState.errorMessage = '商品資料讀取失敗'
+      } finally {
+        this.productState.isLoading = false
       }
     },
 
@@ -685,6 +921,105 @@ export default {
       }
     },
 
+    openProductPriceDialog(product) {
+      this.productState.selectedId = product.product_id
+      this.productState.priceForm = {
+        product_code: product.product_code ?? '',
+        product_name: product.product_name ?? '',
+        product_price: Number(product.product_price ?? 0),
+      }
+      this.productState.isPriceDialogOpen = true
+      this.productState.isCreateDialogOpen = false
+      this.productState.isSettingsDialogOpen = false
+    },
+
+    openProductCreateDialog() {
+      this.productState.createForm = createEmptyProductForm()
+      this.productState.isCreateDialogOpen = true
+      this.productState.isPriceDialogOpen = false
+      this.productState.isSettingsDialogOpen = false
+      this.productState.selectedId = null
+    },
+
+    openProductSettingsDialog() {
+      this.productState.isSettingsDialogOpen = true
+      this.productState.isCreateDialogOpen = false
+      this.productState.isPriceDialogOpen = false
+      this.productState.selectedId = null
+    },
+
+    closeProductDialogs() {
+      this.productState.isPriceDialogOpen = false
+      this.productState.isCreateDialogOpen = false
+      this.productState.isSettingsDialogOpen = false
+      this.productState.selectedId = null
+    },
+
+    async submitProductPriceUpdate() {
+      if (!this.productState.selectedId) {
+        return
+      }
+
+      this.productState.isSubmitting = true
+      this.productState.errorMessage = ''
+
+      try {
+        await axios.post(`/api/product/${this.productState.selectedId}`, {
+          product_id: this.productState.selectedId,
+          product_price: Number(this.productState.priceForm.product_price),
+        })
+
+        await this.fetchProductList()
+        this.closeProductDialogs()
+      } catch (err) {
+        console.error('Failed to update product price', err)
+        this.productState.errorMessage = '更新商品價格失敗'
+      } finally {
+        this.productState.isSubmitting = false
+      }
+    },
+
+    async submitNewProduct() {
+      this.productState.isSubmitting = true
+      this.productState.errorMessage = ''
+
+      try {
+        await axios.post('/api/product', {
+          product_name: this.productState.createForm.product_name,
+          product_price: Number(this.productState.createForm.product_price),
+          is_active: Number(this.productState.createForm.is_active),
+          note: this.productState.createForm.note,
+        })
+
+        await this.fetchProductList()
+        this.closeProductDialogs()
+      } catch (err) {
+        console.error('Failed to create product', err)
+        this.productState.errorMessage = '新增商品失敗'
+      } finally {
+        this.productState.isSubmitting = false
+      }
+    },
+
+    async toggleProductStatus(product) {
+      this.productState.isSubmitting = true
+      this.productState.errorMessage = ''
+
+      try {
+        await axios.post(`/api/product/${product.product_id}/status`, {
+          product_id: product.product_id,
+          is_active: Number(product.is_active) === 0 ? 1 : 0,
+        })
+
+        await this.fetchProductList()
+      } catch (err) {
+        console.error('Failed to toggle product status', err)
+        this.productState.errorMessage = '更新商品啟用狀態失敗'
+      } finally {
+        this.productState.isSubmitting = false
+      }
+    },
+
     formatPrice(price) {
       return Number(price ?? 0)
     },
@@ -693,13 +1028,13 @@ export default {
 </script>
 
 <style scoped>
-.ticket-rental-view {
+.management-view {
   display: grid;
-  gap: 32px;
+  gap: 24px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0 auto;
-  max-width: 1600px;
+  max-width: 2200px;
   padding: 24px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .management-section {
@@ -939,22 +1274,5 @@ export default {
 .status-toggle-button:disabled {
   cursor: not-allowed;
   opacity: 0.7;
-}
-
-@media (max-width: 640px) {
-  .section-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .section-actions,
-  .form-actions,
-  .settings-item {
-    flex-direction: column;
-  }
-
-  .status-toggle-button {
-    width: 100%;
-  }
 }
 </style>
