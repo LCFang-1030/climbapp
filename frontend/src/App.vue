@@ -101,6 +101,7 @@ export default {
             { label: '會員註冊', to: '/form' },
             { label: '員工', to: '/staff' },
             { label: '財務', to: '/account?x=aaa' },
+            { label: '系統', to: '/business' },
             { label: '關於', to: '/about?x=aaa' },
           ],
         },

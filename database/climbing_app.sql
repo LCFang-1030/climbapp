@@ -17,6 +17,47 @@
 /*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
 
 --
+-- Table structure for table `business_hours`
+--
+
+DROP TABLE IF EXISTS `business_hours`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `business_hours` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `weekday` tinyint(3) unsigned NOT NULL COMMENT '1=Monday ~ 7=Sunday',
+  `weekday_name` varchar(10) NOT NULL COMMENT '星期名稱',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1=營業 0=公休',
+  `open_time` time DEFAULT NULL COMMENT '開始營業時間',
+  `close_time` time DEFAULT NULL COMMENT '結束營業時間',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_weekday` (`weekday`),
+  CONSTRAINT `chk_weekday` CHECK (`weekday` between 1 and 7)
+) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `business_hours`
+--
+
+LOCK TABLES `business_hours` WRITE;
+/*!40000 ALTER TABLE `business_hours` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `business_hours` VALUES
+(1,1,'星期一',1,'10:00:00','22:00:00','2026-05-25 14:56:23','2026-05-25 15:25:33'),
+(2,2,'星期二',1,'13:10:00','18:10:00','2026-05-25 14:56:23','2026-05-25 15:25:33'),
+(3,3,'星期三',1,'10:00:00','22:00:00','2026-05-25 14:56:23','2026-05-25 15:25:33'),
+(4,4,'星期四',1,'10:00:00','22:00:00','2026-05-25 14:56:23','2026-05-25 15:25:33'),
+(5,5,'星期五',1,'10:00:00','22:00:00','2026-05-25 14:56:23','2026-05-25 15:25:33'),
+(6,6,'星期六',1,'09:00:00','23:00:00','2026-05-25 14:56:23','2026-05-25 15:25:33'),
+(7,7,'星期日',1,'09:00:00','18:00:00','2026-05-25 14:56:23','2026-05-25 15:25:33');
+/*!40000 ALTER TABLE `business_hours` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `member_passes`
 --
 
@@ -373,4 +414,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-25 14:13:16
+-- Dump completed on 2026-05-25 15:32:06

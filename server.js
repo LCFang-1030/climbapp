@@ -715,6 +715,116 @@ app.post('/api/product/:id/status', async (req, res) => {
   }
 });
 
+app.get('/api/business_hours', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT
+        id,
+        weekday,
+        weekday_name,
+        is_active,
+        TIME_FORMAT(open_time, '%H:%i:%s') AS open_time,
+        TIME_FORMAT(close_time, '%H:%i:%s') AS close_time
+      FROM business_hours
+      ORDER BY weekday
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error('business_hours fetch error', err);
+    res.status(500).send('business_hours DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/business_hours', async (req, res) => {
+  const businessHours = Array.isArray(req.body.business_hours) ? req.body.business_hours : [];
+  const weekdayNames = {
+    1: 'Monday',
+    2: 'Tuesday',
+    3: 'Wednesday',
+    4: 'Thursday',
+    5: 'Friday',
+    6: 'Saturday',
+    7: 'Sunday',
+  };
+
+  if (businessHours.length !== 7) {
+    return res.status(400).json({ success: false, message: 'business_hours must contain 7 days' });
+  }
+
+  const timeRule = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/;
+
+  for (const item of businessHours) {
+    const weekday = Number(item.weekday);
+    const isActive = Number(item.is_active) === 1 ? 1 : 0;
+    const openTime = String(item.open_time ?? '').trim();
+    const closeTime = String(item.close_time ?? '').trim();
+
+    if (!weekdayNames[weekday]) {
+      return res.status(400).json({ success: false, message: `Invalid weekday: ${item.weekday}` });
+    }
+
+    if (isActive) {
+      if (!timeRule.test(openTime) || !timeRule.test(closeTime)) {
+        return res.status(400).json({ success: false, message: `Invalid time format for weekday ${weekday}` });
+      }
+
+      if (openTime >= closeTime) {
+        return res.status(400).json({ success: false, message: `Open time must be earlier than close time for weekday ${weekday}` });
+      }
+    }
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
+
+    for (const item of businessHours) {
+      const weekday = Number(item.weekday);
+      const weekdayName = String(item.weekday_name ?? weekdayNames[weekday]).trim() || weekdayNames[weekday];
+      const isActive = Number(item.is_active) === 1 ? 1 : 0;
+      const openTime = isActive ? String(item.open_time).trim() : null;
+      const closeTime = isActive ? String(item.close_time).trim() : null;
+
+      await conn.query(
+        `INSERT INTO business_hours (
+          weekday,
+          weekday_name,
+          is_active,
+          open_time,
+          close_time
+        ) VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          weekday_name = VALUES(weekday_name),
+          is_active = VALUES(is_active),
+          open_time = VALUES(open_time),
+          close_time = VALUES(close_time),
+          updated_at = CURRENT_TIMESTAMP`,
+        [weekday, weekdayName, isActive, openTime, closeTime]
+      );
+    }
+
+    await conn.commit();
+    res.json({ success: true });
+  } catch (err) {
+    if (conn) {
+      try {
+        await conn.rollback();
+      } catch (rollbackError) {
+        console.error('business_hours rollback error', rollbackError);
+      }
+    }
+    console.error('business_hours save error', err);
+    res.status(500).send('business_hours DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.get('/api/member_visits', async (req, res) => {
   const scope = String(req.query.scope ?? 'today').toLowerCase();
   const todayOnly = scope !== 'all';

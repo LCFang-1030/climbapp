@@ -51,6 +51,11 @@ const routes = [
     component: () => import('../views/AccountView.vue'),
   },
   {
+    path: '/business',
+    name: '系統',
+    component: () => import('../views/BusinessView.vue'),
+  },
+  {
     path: '/about',
     name: '關於',
     // route level code-splitting
