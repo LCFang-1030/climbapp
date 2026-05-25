@@ -9,9 +9,10 @@ const routes = [
     component: () => import('../views/HomeView.vue'),
   },
   {
-    path: '/ticket-rental',
-    name: '套票/裝備',
-    component: () => import('../views/TicketAndRentalView.vue'),
+    path: '/entry',
+    name: '入場/交易紀錄',
+    component: () => import('../views/EntryView.vue'),
+    meta: { requiresAuth: true },   // 👈 標記需要登入
   },
   {
     path: '/member',
@@ -19,15 +20,24 @@ const routes = [
     component: () => import('../views/MemberView.vue'),
   },
   {
+    path: '/visithistory',
+    name: '交易',
+    component: () => import('../views/VisitHistoryView.vue'),
+  },
+  {
+    path: '/ticket-rental',
+    name: '套票/裝備',
+    component: () => import('../views/TicketAndRentalView.vue'),
+  },
+  {
+    path: '/activity',
+    name: '活動',
+    component: () => import('../views/ActivityView.vue'),
+  },
+  {
     path: '/form',
     name: '會員註冊',
     component: () => import('../views/FormView.vue'),
-  },
-  {
-    path: '/entry',
-    name: '入場/交易紀錄',
-    component: () => import('../views/EntryView.vue'),
-    meta: { requiresAuth: true },   // 👈 標記需要登入
   },
   {
     path: '/staff',

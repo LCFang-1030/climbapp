@@ -6,23 +6,58 @@
       </button>
 
       <div class="nav-links">
-        <router-link
-          v-for="item in navItems"
-          :key="item.to"
-          :to="item.to"
-          class="nav-link"
-          :title="item.label"
-        >
-          <span class="nav-icon-wrap">
-            <img class="nav-icon" src="./assets/logo.png" :alt="item.label">
-          </span>
-          <span v-if="!isNavCollapsed" class="nav-label">{{ item.label }}</span>
-        </router-link>
+        <template v-for="item in navItems" :key="item.label">
+          <router-link
+            v-if="item.type === 'link'"
+            :to="item.to"
+            class="nav-link"
+            :title="item.label"
+          >
+            <span class="nav-icon-wrap">
+              <img class="nav-icon" src="./assets/logo.png" :alt="item.label">
+            </span>
+            <span v-if="!isNavCollapsed" class="nav-label">{{ item.label }}</span>
+          </router-link>
+
+          <div v-else class="nav-group">
+            <button
+              type="button"
+              class="nav-group-toggle"
+              :title="item.label"
+              @click="toggleGroup(item.key)"
+            >
+              <span class="nav-icon-wrap">
+                <img class="nav-icon" src="./assets/logo.png" :alt="item.label">
+              </span>
+              <span v-if="!isNavCollapsed" class="nav-group-text">
+                <span class="nav-group-label">{{ item.label }}</span>
+                <span class="nav-group-arrow">
+                  {{ expandedGroups[item.key] ? '-' : '+' }}
+                </span>
+              </span>
+            </button>
+
+            <div v-if="!isNavCollapsed && expandedGroups[item.key]" class="nav-sublinks">
+              <router-link
+                v-for="child in item.children"
+                :key="child.to"
+                :to="child.to"
+                class="nav-link nav-link--child"
+                :title="child.label"
+              >
+                <span class="nav-icon-wrap">
+                  <img class="nav-icon" src="./assets/logo.png" :alt="child.label">
+                </span>
+                <span class="nav-label">{{ child.label }}</span>
+              </router-link>
+            </div>
+          </div>
+        </template>
       </div>
     </nav>
 
     <main class="main-content">
-      <router-view/>
+      <router-view />
     </main>
   </div>
 </template>
@@ -32,18 +67,50 @@ export default {
   data() {
     return {
       isNavCollapsed: false,
+      expandedGroups: {
+        records: true,
+        products: true,
+        settings: true,
+      },
       navItems: [
-        { label: '首頁', to: '/' },
-        { label: '套票/裝備', to: '/ticket-rental' },
-        { label: '會員', to: '/member?x=aaa' },
-        { label: '會員註冊', to: '/form' },
-        { label: '入場/交易紀錄', to: '/entry' },
-        { label: '員工', to: '/staff' },
-        { label: '財務', to: '/account?x=aaa' },
-        { label: '關於', to: '/about?x=aaa' },
-        
+        { type: 'link', label: '首頁', to: '/' },
+        { type: 'link', label: '入場/交易紀錄', to: '/entry' },
+        {
+          type: 'group',
+          key: 'records',
+          label: '紀錄列表',
+          children: [
+            { label: '會員', to: '/member?x=aaa' },
+            { label: '交易', to: '/visithistory' },
+          ],
+        },
+        {
+          type: 'group',
+          key: 'products',
+          label: '商品相關',
+          children: [
+            { label: '套票/裝備', to: '/ticket-rental' },
+            { label: '活動', to: '/activity' },
+          ],
+        },
+        {
+          type: 'group',
+          key: 'settings',
+          label: '設定相關',
+          children: [
+            { label: '會員註冊', to: '/form' },
+            { label: '員工', to: '/staff' },
+            { label: '財務', to: '/account?x=aaa' },
+            { label: '關於', to: '/about?x=aaa' },
+          ],
+        },
       ],
     }
+  },
+  methods: {
+    toggleGroup(groupKey) {
+      this.expandedGroups[groupKey] = !this.expandedGroups[groupKey]
+    },
   },
 }
 </script>
@@ -118,15 +185,27 @@ nav a.router-link-exact-active {
   gap: 16px;
 }
 
-.nav-link {
+.nav-link,
+.nav-group-toggle {
   display: grid;
   grid-template-columns: 32px 1fr;
   align-items: center;
   gap: 8px;
+  width: 100%;
   text-align: left;
 }
 
-.side-nav--collapsed .nav-link {
+.nav-group-toggle {
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.side-nav--collapsed .nav-link,
+.side-nav--collapsed .nav-group-toggle {
   grid-template-columns: 1fr;
   justify-items: center;
 }
@@ -143,8 +222,42 @@ nav a.router-link-exact-active {
   object-fit: contain;
 }
 
-.nav-label {
+.nav-label,
+.nav-group-label {
   min-width: 0;
+}
+
+.nav-group-label {
+  font-weight: bold;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-group-text {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 6px;
+}
+
+.nav-group-arrow {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.nav-sublinks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 32px;
+}
+
+.nav-link--child {
+  grid-template-columns: 32px 1fr;
 }
 
 .main-content {
