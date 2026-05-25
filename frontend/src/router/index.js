@@ -23,6 +23,7 @@ const routes = [
     path: '/visithistory',
     name: '交易',
     component: () => import('../views/VisitHistoryView.vue'),
+    meta: { requiresAuth: true },
   },
   {
     path: '/ticket-rental',
