@@ -221,6 +221,7 @@ export default {
       return JSON.stringify(
         list.map((day) => ({
           weekday: Number(day.weekday),
+          weekday_name: String(day.weekday_name ?? ''),
           is_active: Boolean(day.is_active),
           open_hour: String(day.open_hour ?? ''),
           open_minute: String(day.open_minute ?? ''),
@@ -316,7 +317,16 @@ export default {
 
       this.errorMessage = ''
       this.successMessage = ''
-      this.businessHours = this.normalizeBusinessHours(JSON.parse(this.initialBusinessHoursSnapshot))
+      this.businessHours = JSON.parse(this.initialBusinessHoursSnapshot).map((day) => ({
+        ...day,
+        weekday: Number(day.weekday),
+        weekday_name: String(day.weekday_name ?? ''),
+        is_active: Boolean(day.is_active),
+        open_hour: String(day.open_hour ?? ''),
+        open_minute: String(day.open_minute ?? ''),
+        close_hour: String(day.close_hour ?? ''),
+        close_minute: String(day.close_minute ?? ''),
+      }))
     },
 
     validateBusinessHours() {
