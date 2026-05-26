@@ -3,9 +3,9 @@
     <section class="entry-hero">
       <div>
         <p class="entry-eyebrow">Check In</p>
-        <h1>現場入場作業</h1>
+        <h1>入場登記</h1>
         <p class="entry-description">
-          搜尋會員後直接選票種與租借裝備，建立本次入場紀錄。
+          搜尋會員後，直接選擇票種、租借裝備與商品，完成本次入場結帳。
         </p>
       </div>
       <div class="entry-clock-card">
@@ -14,158 +14,165 @@
       </div>
     </section>
 
-    <section class="entry-layout">
-      <article class="entry-main-card">
-        <form class="member-search" @submit.prevent="searchMember">
-          <div class="member-search-field">
-            <label for="entry-phone">手機 / 會員編號 / 姓名</label>
-            <input
-              id="entry-phone"
-              name="phone"
-              type="text"
-              v-model.trim="phone"
-              placeholder="輸入電話、會員編號或姓名"
-            />
+    <section class="entry-main-card">
+      <form class="member-search" @submit.prevent="searchMember">
+        <div class="member-search-field">
+          <label for="entry-phone">手機 / 會員編號 / 姓名</label>
+          <input
+            id="entry-phone"
+            name="phone"
+            type="text"
+            v-model.trim="phone"
+            placeholder="輸入電話、會員編號或姓名"
+          />
 
-            <div v-if="memberSuggestions.length" class="member-suggestions">
-              <button
-                v-for="member in memberSuggestions"
-                :key="memberKey(member)"
-                type="button"
-                class="member-suggestion"
-                @click="selectSuggestedMember(member)"
-              >
-                {{ suggestionText(member) }}
-              </button>
+          <div v-if="memberSuggestions.length" class="member-suggestions">
+            <button
+              v-for="member in memberSuggestions"
+              :key="memberKey(member)"
+              type="button"
+              class="member-suggestion"
+              @click="selectSuggestedMember(member)"
+            >
+              {{ suggestionText(member) }}
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="primary-button">
+          {{ isSearching ? '搜尋中...' : '搜尋會員' }}
+        </button>
+      </form>
+
+      <p v-if="searchMessage" class="entry-message is-error">{{ searchMessage }}</p>
+
+      <div class="entry-tabs" role="tablist" aria-label="入場選項分類">
+        <button
+          v-for="tab in pickerTabs"
+          :key="tab.key"
+          type="button"
+          class="entry-tab"
+          :class="{ active: activePicker === tab.key }"
+          @click="activePicker = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+
+      <section class="entry-picker-panel">
+        <div v-if="activePicker === 'ticket'" class="entry-button-list">
+          <button
+            v-for="ticket in ticketOptions"
+            :key="ticket.ticket_code"
+            type="button"
+            class="entry-select-button"
+            :class="{ selected: ticket.ticket_code === ticket_type }"
+            @click="selectTicket(ticket.ticket_code)"
+          >
+            <span v-if="ticket.ticket_code === ticket_type" class="entry-select-check">✓</span>
+            <div class="entry-select-top">
+              <span class="entry-select-name">{{ ticket.ticket_name }}</span>
+            </div>
+            <span class="entry-select-price">${{ formatPrice(ticket.ticket_price) }}</span>
+          </button>
+        </div>
+
+        <div v-else-if="activePicker === 'rental'" class="entry-button-list">
+          <button
+            v-for="item in equipmentOptions"
+            :key="item.rental_code"
+            type="button"
+            class="entry-select-button compact"
+            :class="{ selected: equipment.includes(item.rental_code) }"
+            @click="toggleEquipment(item.rental_code)"
+          >
+            <span v-if="equipment.includes(item.rental_code)" class="entry-select-check">✓</span>
+            <div class="entry-select-top">
+              <span class="entry-select-name">{{ item.rental_name }}</span>
+            </div>
+            <span class="entry-select-price">${{ formatPrice(item.rental_price) }}</span>
+          </button>
+        </div>
+
+        <div v-else class="entry-button-list">
+          <button
+            v-for="product in productOptions"
+            :key="product.product_code"
+            type="button"
+            class="entry-select-button compact"
+            :class="{ selected: products.includes(product.product_code) }"
+            @click="toggleProduct(product.product_code)"
+          >
+            <span v-if="products.includes(product.product_code)" class="entry-select-check">✓</span>
+            <div class="entry-select-top">
+              <span class="entry-select-name">{{ product.product_name }}</span>
+            </div>
+            <span class="entry-select-price">${{ formatPrice(product.product_price) }}</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="checkout-panel">
+        <div class="checkout-member-card">
+          <p class="summary-label">會員資料</p>
+          <div v-if="selectedMember" class="member-info">
+            <div class="member-info-row">
+              <span>會員編號</span>
+              <strong>{{ member_code }}</strong>
+            </div>
+            <div class="member-info-row">
+              <span>姓名</span>
+              <strong>{{ selectedMember.name || '-' }}</strong>
+            </div>
+            <div class="member-info-row">
+              <span>手機</span>
+              <strong>{{ selectedMember.phone || '-' }}</strong>
+            </div>
+            <div class="member-info-row">
+              <span>票券狀態</span>
+              <strong>{{ memberPassSummary }}</strong>
             </div>
           </div>
+          <p v-else class="empty-state">搜尋並選擇會員後，資料會顯示在這裡。</p>
+        </div>
 
-          <button type="submit" class="primary-button">
-            {{ isSearching ? '搜尋中...' : '搜尋會員' }}
-          </button>
-        </form>
-
-        <p v-if="searchMessage" class="entry-message is-error">{{ searchMessage }}</p>
-
-        <section v-if="selectedMember" class="member-summary-card">
-          <p class="summary-label">已選會員</p>
-          <div class="member-summary">
+        <div class="checkout-selection-card">
+          <p class="summary-label">已選內容</p>
+          <div v-if="selectedSummaryChips.length" class="selection-chip-list">
             <span
-              v-for="item in memberSummaryItems"
-              :key="item"
-              class="member-summary-chip"
+              v-for="chip in selectedSummaryChips"
+              :key="chip.key"
+              class="selection-chip"
+              :class="`is-${chip.type}`"
             >
-              {{ item }}
+              {{ chip.label }}
             </span>
           </div>
-        </section>
-
-        <section class="entry-picker-section">
-          <div class="section-heading">
-            <h2>選擇票種</h2>
-            <span>{{ ticketOptions.length }} 種可用</span>
-          </div>
-
-          <div class="entry-button-list">
-            <button
-              v-for="ticket in ticketOptions"
-              :key="ticket.ticket_code"
-              type="button"
-              class="entry-select-button"
-              :class="{ selected: ticket.ticket_code === ticket_type }"
-              @click="selectTicket(ticket.ticket_code)"
-            >
-              <span v-if="ticket.ticket_code === ticket_type" class="entry-select-check">✓</span>
-              <div class="entry-select-top">
-                <span class="entry-select-name">{{ ticket.ticket_name }}</span>
-              </div>
-              <span class="entry-select-price">${{ ticket.ticket_price }}</span>
-            </button>
-          </div>
-        </section>
-
-        <section class="entry-picker-section">
-          <div class="section-heading">
-            <h2>租借裝備</h2>
-            <span>{{ equipment.length }} 項已選</span>
-          </div>
-
-          <div class="entry-button-list">
-            <button
-              v-for="item in equipmentOptions"
-              :key="item.rental_code"
-              type="button"
-              class="entry-select-button compact"
-              :class="{ selected: equipment.includes(item.rental_code) }"
-              @click="toggleEquipment(item.rental_code)"
-            >
-              <span v-if="equipment.includes(item.rental_code)" class="entry-select-check">✓</span>
-              <div class="entry-select-top">
-                <span class="entry-select-name">{{ item.rental_name }}</span>
-              </div>
-              <span class="entry-select-price">${{ item.rental_price }}</span>
-            </button>
-          </div>
-        </section>
-      </article>
-
-      <aside class="entry-side-card">
-        <div class="side-card-header">
-          <div>
-            <p class="summary-label">本次摘要</p>
-            <h2>入場確認</h2>
-          </div>
-          <button type="button" class="ghost-button" @click="Setlogout()">登出</button>
+          <p v-else class="empty-state">尚未選擇票種、租借裝備或商品。</p>
         </div>
 
-        <div class="summary-list">
-          <div class="summary-row">
-            <span>會員</span>
-            <strong>{{ selectedMember?.name || '尚未選擇' }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>會員編號</span>
-            <strong>{{ member_code || '-' }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>電話</span>
-            <strong>{{ phone || '-' }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>票種</span>
-            <strong>{{ selectedTicket?.ticket_name || '尚未選擇' }}</strong>
-          </div>
-          <div class="summary-row">
-            <span>裝備</span>
-            <strong>{{ selectedEquipmentText }}</strong>
-          </div>
+        <div class="checkout-total-card">
+          <p class="summary-label">結帳應付金額</p>
+          <strong class="total-amount">${{ formatPrice(price_total) }}</strong>
+          <button
+            type="button"
+            class="submit-button"
+            :disabled="isSubmittingVisit"
+            @click="submitVisit"
+          >
+            {{ isSubmittingVisit ? '建立入場中...' : '送出入場' }}
+          </button>
+          <p v-if="visitMessage" class="entry-message" :class="visitMessageClass">
+            {{ visitMessage }}
+          </p>
         </div>
-
-        <div class="entry-total-card">
-          <span>總金額</span>
-          <strong>${{ price_total }}</strong>
-        </div>
-
-        <button
-          type="button"
-          class="submit-button"
-          :disabled="isSubmittingVisit"
-          @click="submitVisit"
-        >
-          {{ isSubmittingVisit ? '建立入場中...' : '確認入場' }}
-        </button>
-
-        <p v-if="visitMessage" class="entry-message" :class="visitMessageClass">
-          {{ visitMessage }}
-        </p>
-      </aside>
+      </section>
     </section>
   </div>
 </template>
 
 <script>
 import axios from 'axios'
-import { clearStoredAuth } from '../utils/auth'
 
 export default {
   mounted() {
@@ -174,6 +181,7 @@ export default {
     this.fetchMembers()
     this.fetchTickets()
     this.fetchRentalEquipment()
+    this.fetchProducts()
   },
 
   beforeUnmount() {
@@ -193,12 +201,21 @@ export default {
       isSearching: false,
       searchMessage: '',
       equipment: [],
+      products: [],
       ticket_type: null,
       equipmentOptions: [],
+      productOptions: [],
       ticketOptions: [],
+      activePicker: 'ticket',
       isSubmittingVisit: false,
       visitMessage: '',
       visitMessageType: '',
+      isClearingSearchAfterSelect: false,
+      pickerTabs: [
+        { key: 'ticket', label: '票種' },
+        { key: 'rental', label: '租借裝備' },
+        { key: 'product', label: '商品' },
+      ],
     }
   },
 
@@ -238,6 +255,17 @@ export default {
       }
     },
 
+    async fetchProducts() {
+      try {
+        const res = await axios.get('/api/product')
+        this.productOptions = Array.isArray(res.data)
+          ? res.data.filter((item) => Number(item.is_active) !== 0)
+          : []
+      } catch (err) {
+        console.error('載入商品失敗', err)
+      }
+    },
+
     selectTicket(ticketCode) {
       this.ticket_type = this.ticket_type === ticketCode ? null : ticketCode
     },
@@ -249,6 +277,15 @@ export default {
       }
 
       this.equipment = [...this.equipment, rentalCode]
+    },
+
+    toggleProduct(productCode) {
+      if (this.products.includes(productCode)) {
+        this.products = this.products.filter((code) => code !== productCode)
+        return
+      }
+
+      this.products = [...this.products, productCode]
     },
 
     async searchMember() {
@@ -271,8 +308,8 @@ export default {
         if (!member) {
           this.clearMember()
           this.searchMessage = matches.length > 1
-            ? `找到 ${matches.length} 位符合會員，請直接點選清單中的正確會員`
-            : '找不到符合的會員資料'
+            ? `找到 ${matches.length} 筆相近會員，請從下方建議名單中點選正確會員`
+            : '查無符合條件的會員資料'
           return
         }
 
@@ -356,7 +393,8 @@ export default {
     setSelectedMember(member) {
       this.selectedMember = member
       this.member_code = member.member_code ?? ''
-      this.phone = member.phone ?? this.phone
+      this.isClearingSearchAfterSelect = true
+      this.phone = ''
       this.visitMessage = ''
       this.visitMessageType = ''
     },
@@ -373,11 +411,6 @@ export default {
       return `${member.phone ?? ''} | ${member.name ?? ''} | ${member.member_code ?? ''}`
     },
 
-    Setlogout() {
-      clearStoredAuth()
-      this.$router.push('/login')
-    },
-
     clearMember() {
       this.selectedMember = null
       this.member_code = ''
@@ -385,8 +418,8 @@ export default {
 
     passText(passType) {
       const passLabels = {
-        0: 'NONE',
-        single: 'NONE',
+        0: '無長期票',
+        single: '無長期票',
         1: '月票',
         monthly: '月票',
         2: '季票',
@@ -397,7 +430,7 @@ export default {
         yearly: '年票',
       }
 
-      return passLabels[passType] ?? passType ?? 'NONE'
+      return passLabels[passType] ?? passType ?? '無長期票'
     },
 
     formatDate(value) {
@@ -412,6 +445,10 @@ export default {
       }
 
       return date.toLocaleDateString('zh-TW')
+    },
+
+    formatPrice(value) {
+      return Number(value ?? 0).toLocaleString('zh-TW')
     },
 
     async submitVisit() {
@@ -436,15 +473,17 @@ export default {
           member_id: this.selectedMember.member_id,
           ticket_code: this.ticket_type,
           rental_codes: this.equipment,
+          product_codes: this.products,
         })
 
-        this.visitMessage = '入場紀錄建立成功'
+        this.visitMessage = '入場資料已建立'
         this.visitMessageType = 'success'
         this.ticket_type = null
         this.equipment = []
+        this.products = []
       } catch (err) {
-        console.error('建立入場紀錄失敗', err)
-        this.visitMessage = err.response?.data?.message ?? '建立入場紀錄失敗'
+        console.error('建立入場失敗', err)
+        this.visitMessage = err.response?.data?.message ?? '建立入場失敗'
         this.visitMessageType = 'error'
       } finally {
         this.isSubmittingVisit = false
@@ -463,28 +502,6 @@ export default {
         .map((result) => result.member)
     },
 
-    memberSummaryItems() {
-      if (!this.selectedMember) {
-        return []
-      }
-
-      const passItems = this.hasLongTermPass
-        ? [
-            this.passText(this.selectedMember.pass_type),
-            this.selectedMember.active_pass_expires_at
-              ? this.formatDate(this.selectedMember.active_pass_expires_at)
-              : '',
-          ]
-        : ['一般單次']
-
-      return [
-        this.member_code,
-        this.selectedMember.name,
-        this.selectedMember.phone,
-        ...passItems,
-      ].filter((value) => value !== null && value !== undefined && value !== '')
-    },
-
     selectedTicket() {
       return this.ticketOptions.find((ticket) => ticket.ticket_code === this.ticket_type)
     },
@@ -494,14 +511,53 @@ export default {
       return Boolean(passType && passType !== 'single' && Number(passType) !== 0)
     },
 
-    selectedEquipmentText() {
-      if (!this.equipment.length) {
-        return '未租借'
+    memberPassSummary() {
+      if (!this.selectedMember) {
+        return '-'
       }
 
-      return this.equipment
-        .map((code) => this.equipmentOptions.find((option) => option.rental_code === code)?.rental_name || code)
-        .join('、')
+      if (!this.hasLongTermPass) {
+        return '無長期票'
+      }
+
+      const label = this.passText(this.selectedMember.pass_type)
+      const expiresAt = this.selectedMember.active_pass_expires_at
+        ? this.formatDate(this.selectedMember.active_pass_expires_at)
+        : ''
+
+      return expiresAt ? `${label}｜到期 ${expiresAt}` : label
+    },
+
+    selectedSummaryChips() {
+      const chips = []
+
+      if (this.selectedTicket) {
+        chips.push({
+          key: `ticket-${this.selectedTicket.ticket_code}`,
+          label: this.selectedTicket.ticket_name,
+          type: 'ticket',
+        })
+      }
+
+      this.equipment.forEach((code) => {
+        const option = this.equipmentOptions.find((item) => item.rental_code === code)
+        chips.push({
+          key: `rental-${code}`,
+          label: option?.rental_name || code,
+          type: 'rental',
+        })
+      })
+
+      this.products.forEach((code) => {
+        const option = this.productOptions.find((item) => item.product_code === code)
+        chips.push({
+          key: `product-${code}`,
+          label: option?.product_name || code,
+          type: 'product',
+        })
+      })
+
+      return chips
     },
 
     visitMessageClass() {
@@ -514,15 +570,21 @@ export default {
         const item = this.equipmentOptions.find((option) => option.rental_code === code)
         return total + Number(item?.rental_price ?? 0)
       }, 0)
+      const productTotal = this.products.reduce((total, code) => {
+        const item = this.productOptions.find((option) => option.product_code === code)
+        return total + Number(item?.product_price ?? 0)
+      }, 0)
 
-      return ticketTotal + equipmentTotal
+      return ticketTotal + equipmentTotal + productTotal
     },
   },
 
   watch: {
-    phone(newPhone) {
-      if (this.selectedMember && newPhone !== this.selectedMember.phone) {
-        this.clearMember()
+    phone() {
+      if (this.isClearingSearchAfterSelect) {
+        this.isClearingSearchAfterSelect = false
+        this.searchMessage = ''
+        return
       }
 
       this.searchMessage = ''
@@ -569,9 +631,7 @@ export default {
   text-transform: uppercase;
 }
 
-.entry-hero h1,
-.entry-main-card h2,
-.entry-side-card h2 {
+.entry-hero h1 {
   margin: 0;
 }
 
@@ -583,8 +643,7 @@ export default {
 }
 
 .entry-clock-card,
-.entry-main-card,
-.entry-side-card {
+.entry-main-card {
   border: 1px solid var(--panel-border);
   border-radius: 24px;
   background: var(--panel-bg);
@@ -603,29 +662,16 @@ export default {
   font-size: 13px;
 }
 
-.entry-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
-  gap: 24px;
-  align-items: start;
-}
-
-.entry-main-card,
-.entry-side-card {
+.entry-main-card {
   padding: 24px;
   backdrop-filter: blur(6px);
-}
-
-.entry-side-card {
-  position: sticky;
-  top: 24px;
 }
 
 .member-search {
   display: flex;
   align-items: end;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 
 .member-search-field {
@@ -644,11 +690,11 @@ export default {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid rgba(41, 88, 61, 0.18);
-  border-radius: 16px;
+  border-radius: 20px;
   background: #fff;
   color: var(--text-main);
   font: inherit;
-  padding: 14px 16px;
+  padding: 16px 18px;
 }
 
 .member-search-field input:focus {
@@ -658,9 +704,9 @@ export default {
 
 .primary-button,
 .submit-button,
-.ghost-button {
+.ghost-button,
+.entry-tab {
   border: 0;
-  border-radius: 999px;
   cursor: pointer;
   font: inherit;
   font-weight: 700;
@@ -669,21 +715,24 @@ export default {
 
 .primary-button,
 .submit-button {
+  border-radius: 999px;
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
   color: #fff;
   box-shadow: 0 14px 28px rgba(32, 93, 61, 0.2);
-  padding: 14px 20px;
+  padding: 15px 24px;
 }
 
 .ghost-button {
+  border-radius: 999px;
   background: rgba(47, 122, 83, 0.08);
   color: var(--accent-strong);
-  padding: 10px 16px;
+  padding: 12px 18px;
 }
 
 .primary-button:hover,
 .submit-button:hover,
-.ghost-button:hover {
+.ghost-button:hover,
+.entry-tab:hover {
   transform: translateY(-1px);
 }
 
@@ -724,7 +773,7 @@ export default {
 }
 
 .entry-message {
-  margin: 16px 0 0;
+  margin: 14px 0 0;
   line-height: 1.6;
 }
 
@@ -736,51 +785,29 @@ export default {
   color: var(--success);
 }
 
-.member-summary-card {
-  margin: 18px 0 26px;
-  border: 1px solid rgba(41, 88, 61, 0.12);
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.76);
-  padding: 18px;
-}
-
-.member-summary {
+.entry-tabs {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.member-summary-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  background: rgba(47, 122, 83, 0.1);
-  color: var(--accent-strong);
-  font-size: 14px;
-  font-weight: 700;
-  padding: 8px 12px;
-}
-
-.entry-picker-section + .entry-picker-section {
-  margin-top: 28px;
-}
-
-.section-heading,
-.side-card-header,
-.summary-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
+  margin: 8px 0 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(41, 88, 61, 0.14);
 }
 
-.section-heading {
-  margin-bottom: 14px;
-}
-
-.section-heading span {
+.entry-tab {
+  border-radius: 16px;
+  background: transparent;
   color: var(--text-soft);
-  font-size: 14px;
+  padding: 10px 18px;
+}
+
+.entry-tab.active {
+  background: rgba(47, 122, 83, 0.12);
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(47, 122, 83, 0.16);
+}
+
+.entry-picker-panel {
+  margin-bottom: 28px;
 }
 
 .entry-button-list {
@@ -828,6 +855,7 @@ export default {
 }
 
 .entry-select-name {
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -852,54 +880,113 @@ export default {
   font-weight: 700;
 }
 
-.summary-list {
+.checkout-panel {
   display: grid;
-  gap: 14px;
-  margin: 20px 0 22px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(260px, 0.7fr);
+  border-top: 1px solid rgba(41, 88, 61, 0.12);
 }
 
-.summary-row {
+.checkout-member-card,
+.checkout-selection-card,
+.checkout-total-card {
+  min-height: 220px;
+  padding: 22px 20px;
+}
+
+.checkout-selection-card,
+.checkout-total-card {
+  border-left: 1px solid rgba(41, 88, 61, 0.12);
+}
+
+.member-info {
+  display: grid;
+  gap: 12px;
+}
+
+.member-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   border-bottom: 1px solid rgba(41, 88, 61, 0.1);
   padding-bottom: 10px;
 }
 
-.summary-row span {
+.member-info-row span {
   color: var(--text-soft);
 }
 
-.summary-row strong {
+.member-info-row strong {
   text-align: right;
 }
 
-.entry-total-card {
+.selection-chip-list {
   display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.selection-chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(47, 122, 83, 0.1) 0%, rgba(32, 93, 61, 0.18) 100%);
-  margin-bottom: 18px;
-  padding: 18px;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  padding: 10px 16px;
 }
 
-.entry-total-card span {
-  color: var(--text-soft);
+.selection-chip.is-ticket {
+  background: rgba(63, 120, 224, 0.16);
+  border-color: rgba(63, 120, 224, 0.2);
+  color: #2b5da8;
 }
 
-.entry-total-card strong {
-  font-size: 30px;
+.selection-chip.is-rental {
+  background: rgba(47, 122, 83, 0.14);
+  border-color: rgba(47, 122, 83, 0.18);
+  color: var(--accent-strong);
 }
 
-.submit-button {
+.selection-chip.is-product {
+  background: rgba(211, 140, 59, 0.16);
+  border-color: rgba(211, 140, 59, 0.22);
+  color: #8c5616;
+}
+
+.checkout-total-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.total-amount {
+  margin: 6px 0 18px;
+  color: #36b37e;
+  font-size: 52px;
+  line-height: 1;
+}
+
+.checkout-total-card .submit-button {
   width: 100%;
+  margin-bottom: 12px;
+}
+
+.empty-state {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.7;
 }
 
 @media (max-width: 980px) {
-  .entry-layout {
+  .checkout-panel {
     grid-template-columns: 1fr;
   }
 
-  .entry-side-card {
-    position: static;
+  .checkout-selection-card,
+  .checkout-total-card {
+    border-left: 0;
+    border-top: 1px solid rgba(41, 88, 61, 0.12);
   }
 }
 
@@ -910,24 +997,32 @@ export default {
 
   .entry-hero,
   .member-search,
-  .section-heading,
-  .side-card-header,
-  .summary-row {
+  .member-info-row {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .entry-clock-card {
-    width: 100%;
-  }
-
+  .entry-clock-card,
   .primary-button,
   .ghost-button {
     width: 100%;
   }
 
-  .summary-row strong {
+  .entry-tabs {
+    overflow-x: auto;
+    padding-bottom: 12px;
+  }
+
+  .entry-tab {
+    white-space: nowrap;
+  }
+
+  .member-info-row strong {
     text-align: left;
+  }
+
+  .total-amount {
+    font-size: 42px;
   }
 }
 </style>
