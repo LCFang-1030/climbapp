@@ -58,6 +58,7 @@ const routes = [
     path: '/scheduling',
     name: '排班',
     component: () => import('../views/SchedulingView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'scheduling' },
   },
   {
     path: '/financial',
