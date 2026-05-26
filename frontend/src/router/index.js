@@ -55,6 +55,11 @@ const routes = [
     component: () => import('../views/LoginView.vue'),
   },
   {
+    path: '/scheduling',
+    name: '排班',
+    component: () => import('../views/SchedulingView.vue'),
+  },
+  {
     path: '/financial',
     name: '財務',
     component: () => import('../views/FinancialView.vue'),

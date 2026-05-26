@@ -119,6 +119,7 @@ const navGroups = [
       { label: '會員註冊', to: '/form', permissionKey: 'form', requiresAuth: true },
       { label: '帳號開通', to: '/staff-signup', requiresAuth: false },
       { label: '員工登入', to: '/login', requiresAuth: false },
+      { label: '排班', to: '/scheduling', requiresAuth: false },
       { label: '財務', to: '/financial', permissionKey: 'financial', requiresAuth: true },
       { label: '系統', to: '/business', permissionKey: 'business', requiresAuth: true },
       { label: '關於', to: '/about', permissionKey: 'about', requiresAuth: true },

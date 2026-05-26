@@ -7,6 +7,7 @@ export const BASE_ALLOWED_PERMISSIONS = [
   'visithistory',
   'items',
   'activity',
+  'scheduling',
 ]
 
 export function isAdminStaff(staff = {}) {
