@@ -37,6 +37,51 @@ app.get('/api/staff', async (req, res) => {
   }
 });
 
+app.post('/api/staff/login', async (req, res) => {
+  const { employee_id: employeeId, password } = req.body;
+
+  if (!employeeId || !password) {
+    return res.status(400).send('請輸入員工編號與密碼');
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT eid, employee_id, alias, employee_title, password, is_active
+       FROM staff
+       WHERE employee_id = ?`,
+      [employeeId]
+    );
+
+    if (!rows.length) {
+      return res.status(401).send('帳號或密碼錯誤');
+    }
+
+    const staff = rows[0];
+
+    if (String(staff.password) !== String(password)) {
+      return res.status(401).send('帳號或密碼錯誤');
+    }
+
+    if (Number(staff.is_active) !== 1) {
+      return res.status(403).send('此帳號已停用');
+    }
+
+    res.json({
+      eid: staff.eid,
+      employee_id: staff.employee_id,
+      alias: staff.alias,
+      employee_title: staff.employee_title,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('staff login DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.get('/api/staff/:eid', async (req, res) => {
   const { eid } = req.params;
 

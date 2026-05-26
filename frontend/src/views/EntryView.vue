@@ -165,14 +165,9 @@
 
 <script>
 import axios from 'axios'
+import { clearStoredAuth } from '../utils/auth'
 
 export default {
-  beforeCreate() {
-    if (!localStorage.getItem('islogin')) {
-      this.$router.push('/staff')
-    }
-  },
-
   mounted() {
     this.updateCurrentDateTime()
     this.clockTimer = window.setInterval(this.updateCurrentDateTime, 1000)
@@ -379,8 +374,8 @@ export default {
     },
 
     Setlogout() {
-      localStorage.removeItem('islogin')
-      this.$router.push('/staff')
+      clearStoredAuth()
+      this.$router.push('/login')
     },
 
     clearMember() {

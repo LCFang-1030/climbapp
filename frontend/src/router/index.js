@@ -1,87 +1,107 @@
 import { createRouter, createWebHistory } from 'vue-router'
-// import HomeView from '../views/HomeView.vue'
+import { canAccessPermission, getStoredAuth } from '../utils/auth'
 
 const routes = [
   {
     path: '/',
     name: '首頁',
-    // component: HomeView
     component: () => import('../views/HomeView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'home' },
   },
   {
     path: '/entry',
     name: '入場',
     component: () => import('../views/EntryView.vue'),
-    meta: { requiresAuth: true },   // 👈 標記需要登入
+    meta: { requiresAuth: true, permissionKey: 'entry' },
   },
   {
     path: '/member',
     name: '會員',
     component: () => import('../views/MemberView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'member' },
   },
   {
     path: '/visithistory',
     name: '交易',
     component: () => import('../views/VisitHistoryView.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, permissionKey: 'visithistory' },
   },
   {
     path: '/items',
     name: '單品',
     component: () => import('../views/ItemsView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'items' },
   },
   {
     path: '/activity',
     name: '活動',
     component: () => import('../views/ActivityView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'activity' },
   },
   {
     path: '/form',
     name: '會員註冊',
     component: () => import('../views/FormView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'form' },
   },
   {
-    path: '/staff',
-    name: '員工',
-    component: () => import('../views/StaffView.vue'),
+    path: '/staff-signup',
+    name: '員工註冊',
+    component: () => import('../views/StaffSignupView.vue'),
+  },
+  {
+    path: '/login',
+    name: '員工登入',
+    component: () => import('../views/LoginView.vue'),
   },
   {
     path: '/account',
     name: '財務',
     component: () => import('../views/AccountView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'account' },
   },
   {
     path: '/business',
     name: '系統',
     component: () => import('../views/BusinessView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'business' },
   },
   {
     path: '/about',
     name: '關於',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue'),
+    component: () => import('../views/AboutView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'about' },
   },
 ]
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
-  routes
+  routes,
 })
 
 router.beforeEach((to, from, next) => {
-  const islogin = localStorage.getItem('islogin')
+  const auth = getStoredAuth()
+  const isLoggedIn = Boolean(auth?.isLoggedIn)
 
-  if (to.meta.requiresAuth && !islogin) {
-    console.log('未登入，禁止進入 Entry')
+  if (to.meta.requiresAuth && !isLoggedIn) {
     next({
-      path: '/staff',
-      query: { t: Date.now() } // 強迫 route 改變
-    });
-  } else {
-    next()
+      path: '/login',
+      query: { redirect: to.fullPath },
+    })
+    return
   }
+
+  if (to.path === '/login' && isLoggedIn) {
+    next('/')
+    return
+  }
+
+  if (to.meta.permissionKey && !canAccessPermission(auth, to.meta.permissionKey)) {
+    next('/')
+    return
+  }
+
+  next()
 })
 
 export default router

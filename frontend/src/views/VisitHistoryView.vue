@@ -183,12 +183,6 @@ const decorateVisits = (visits) =>
   }))
 
 export default {
-  beforeCreate() {
-    if (!localStorage.getItem('islogin')) {
-      this.$router.push('/staff')
-    }
-  },
-
   mounted() {
     this.updateCurrentDateTime()
     this.clockTimer = window.setInterval(this.updateCurrentDateTime, 1000)
