@@ -1,7 +1,7 @@
 
 <template>
-  <div class="account">
-    <h1>This is an account page</h1>
+  <div class="financial">
+    <h1>This is an financial page</h1>
     <h1>{{ x }}</h1>
   </div>
 </template>

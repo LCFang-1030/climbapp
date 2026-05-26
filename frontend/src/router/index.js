@@ -55,10 +55,10 @@ const routes = [
     component: () => import('../views/LoginView.vue'),
   },
   {
-    path: '/account',
+    path: '/financial',
     name: '財務',
-    component: () => import('../views/AccountView.vue'),
-    meta: { requiresAuth: true, permissionKey: 'account' },
+    component: () => import('../views/FinancialView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'financial' },
   },
   {
     path: '/business',
