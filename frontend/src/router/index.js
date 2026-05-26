@@ -46,7 +46,7 @@ const routes = [
   },
   {
     path: '/staff-signup',
-    name: '員工註冊',
+    name: '帳號開通',
     component: () => import('../views/StaffSignupView.vue'),
   },
   {
