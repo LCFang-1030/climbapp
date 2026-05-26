@@ -8,15 +8,23 @@
           建立員工帳號後，系統會自動產生員工編號，且初始密碼預設為員工編號。
         </p>
       </div>
-      <router-link class="back-to-login" to="/login">
-        返回登入
-      </router-link>
+      <div class="header-actions">
+        <button type="button" class="secondary-button" @click="clearForm">
+          清空表單
+        </button>
+        <button type="submit" class="primary-button" form="staff-signup-form">
+          建立員工
+        </button>
+        <router-link class="back-to-login" to="/login">
+          返回登入
+        </router-link>
+      </div>
     </section>
 
     <p v-if="errorMsg" class="error-box">{{ errorMsg }}</p>
 
     <section class="signup-shell">
-      <form class="signup-form" @submit.prevent="setSignup">
+      <form id="staff-signup-form" class="signup-form" @submit.prevent="setSignup">
         <section class="form-section-card">
           <h2>基本資料</h2>
           <div class="form-section">
@@ -41,7 +49,7 @@
           </div>
         </section>
 
-        <section class="form-section-card">
+        <section class="form-section-card form-section-card--stacked">
           <h2>緊急聯絡人</h2>
           <div class="form-section">
             <div v-for="(label, key) in emergencyContactLabels" :key="key" class="form-row">
@@ -49,11 +57,11 @@
               <input type="text" v-model.trim="form[key]">
             </div>
           </div>
-        </section>
 
-        <section class="form-section-card">
-          <h2>職務資訊</h2>
-          <div class="form-section">
+          <div class="section-divider"></div>
+
+          <h2 class="subsection-title">職務資訊</h2>
+          <div class="form-section form-section--compact">
             <div v-for="(label, key) in jobRelatedLabels" :key="key" class="form-row">
               <span>{{ label }}</span>
 
@@ -78,26 +86,17 @@
               <input v-else type="text" v-model.trim="form[key]">
             </div>
           </div>
-        </section>
 
-        <section class="form-section-card">
-          <h2>備註</h2>
-          <div class="form-section">
-            <div v-for="(label, key) in noteLabels" :key="key" class="form-row">
+          <div class="section-divider"></div>
+
+          <h2 class="subsection-title">備註</h2>
+          <div class="form-section form-section--compact">
+            <div v-for="(label, key) in noteLabels" :key="key" class="form-row form-row--textarea">
               <span>{{ label }}</span>
-              <textarea v-model.trim="form[key]" rows="4"></textarea>
+              <textarea v-model.trim="form[key]" rows="3"></textarea>
             </div>
           </div>
         </section>
-
-        <div class="form-actions">
-          <button type="button" class="secondary-button" @click="clearForm">
-            清空表單
-          </button>
-          <button type="submit" class="primary-button">
-            建立員工
-          </button>
-        </div>
       </form>
     </section>
   </div>
@@ -287,6 +286,14 @@ export default {
   box-shadow: 0 24px 48px rgba(32, 52, 74, 0.08);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .page-kicker {
   margin: 0 0 10px;
   color: #0f5ea8;
@@ -340,8 +347,17 @@ export default {
   box-shadow: 0 24px 48px rgba(32, 52, 74, 0.08);
 }
 
+.form-section-card--stacked {
+  display: flex;
+  flex-direction: column;
+}
+
 .form-section-card h2 {
   margin: 0 0 14px;
+}
+
+.subsection-title {
+  margin-top: 0;
 }
 
 .form-section {
@@ -350,11 +366,25 @@ export default {
   gap: 12px;
 }
 
+.form-section--compact {
+  gap: 10px;
+}
+
+.section-divider {
+  height: 1px;
+  margin: 18px 0;
+  background: linear-gradient(90deg, rgba(15, 94, 168, 0.18), rgba(15, 94, 168, 0));
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 130px minmax(0, 1fr);
   gap: 12px;
   align-items: center;
+}
+
+.form-row--textarea {
+  align-items: start;
 }
 
 .form-row span {
@@ -374,6 +404,10 @@ export default {
   background: #f8fbfe;
 }
 
+.form-row textarea {
+  resize: vertical;
+}
+
 .radio-row {
   display: flex;
   gap: 18px;
@@ -389,19 +423,17 @@ export default {
   width: auto;
   min-height: auto;
 }
-
-.form-actions {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
+
 
 .primary-button,
 .secondary-button {
   min-height: 46px;
   padding: 0 18px;
   border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -423,18 +455,20 @@ export default {
     flex-direction: column;
   }
 
+  .header-actions {
+    width: 100%;
+  }
+
+  .header-actions > * {
+    flex: 1 1 100%;
+  }
+
   .signup-form {
     grid-template-columns: 1fr;
   }
 
   .form-row {
     grid-template-columns: 1fr;
-  }
-
-  .form-actions,
-  .form-actions {
-    flex-direction: column;
-    align-items: stretch;
   }
 }
 </style>
