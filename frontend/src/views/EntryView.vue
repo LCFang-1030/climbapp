@@ -606,14 +606,19 @@ export default {
   --success: #176a3c;
   --shadow-soft: 0 18px 40px rgba(25, 50, 37, 0.12);
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
   max-width: 1320px;
-  min-height: 100%;
+  height: 100vh;
   padding: 32px 24px 40px;
+  box-sizing: border-box;
+  overflow: hidden;
   color: var(--text-main);
   background: var(--entry-bg);
 }
 
 .entry-hero {
+  flex-shrink: 0;
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -663,8 +668,14 @@ export default {
 }
 
 .entry-main-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   padding: 24px;
   backdrop-filter: blur(6px);
+  overflow: hidden;
 }
 
 .member-search {
@@ -807,18 +818,28 @@ export default {
 }
 
 .entry-picker-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  width: min(75%, 720px);
+  max-width: 100%;
+  padding-bottom: 260px;
+  padding-right: 8px;
   margin-bottom: 28px;
 }
 
 .entry-button-list {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, 180px);
+  justify-content: start;
 }
 
 .entry-select-button {
   position: relative;
-  min-height: 96px;
+  width: 180px;
+  min-height: 88px;
+  height: 88px;
   border: 1px solid rgba(41, 88, 61, 0.14);
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 247, 242, 0.96) 100%);
@@ -845,6 +866,7 @@ export default {
 
 .entry-select-button.compact {
   min-height: 88px;
+  height: 88px;
 }
 
 .entry-select-top {
@@ -881,21 +903,36 @@ export default {
 }
 
 .checkout-panel {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  z-index: 20;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(260px, 0.7fr);
-  border-top: 1px solid rgba(41, 88, 61, 0.12);
+  overflow: hidden;
+  border: 1px solid rgba(41, 88, 61, 0.16);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 18px 40px rgba(25, 50, 37, 0.16);
+  backdrop-filter: blur(10px);
 }
 
 .checkout-member-card,
 .checkout-selection-card,
 .checkout-total-card {
-  min-height: 220px;
-  padding: 22px 20px;
+  height: 140px;
+  padding: 18px 20px;
 }
 
 .checkout-selection-card,
 .checkout-total-card {
   border-left: 1px solid rgba(41, 88, 61, 0.12);
+}
+
+.checkout-member-card,
+.checkout-selection-card {
+  overflow-y: auto;
 }
 
 .member-info {
@@ -963,13 +1000,13 @@ export default {
 .total-amount {
   margin: 6px 0 18px;
   color: #36b37e;
-  font-size: 52px;
+  font-size: 45px;
   line-height: 1;
 }
 
 .checkout-total-card .submit-button {
   width: 100%;
-  margin-bottom: 12px;
+  margin-bottom: 4px;
 }
 
 .empty-state {
@@ -979,7 +1016,32 @@ export default {
 }
 
 @media (max-width: 980px) {
+  .entry-page {
+    height: auto;
+    overflow: visible;
+  }
+
+  .entry-main-card {
+    display: block;
+    overflow: visible;
+  }
+
+  .entry-picker-panel {
+    width: 100%;
+    padding-bottom: 0;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .entry-button-list {
+    grid-template-columns: repeat(auto-fill, 140px);
+  }
+
   .checkout-panel {
+    position: static;
+    left: auto;
+    right: auto;
+    bottom: auto;
     grid-template-columns: 1fr;
   }
 
