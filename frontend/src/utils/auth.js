@@ -22,6 +22,7 @@ export function normalizeAuthPayload(staff = {}) {
 
   return {
     isLoggedIn: true,
+    eid: staff.eid ?? null,
     employee_id: staff.employee_id ?? '',
     alias: staff.alias ?? '',
     employee_title: staff.employee_title ?? '',

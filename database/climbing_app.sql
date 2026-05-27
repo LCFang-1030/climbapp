@@ -106,7 +106,7 @@ CREATE TABLE `member_visits` (
   `visit_type` varchar(50) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`visit_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -117,7 +117,8 @@ LOCK TABLES `member_visits` WRITE;
 /*!40000 ALTER TABLE `member_visits` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `member_visits` VALUES
-(1,1,'2026-05-14 21:57:37',NULL,'TK0005','2026-05-14 21:57:37');
+(1,1,'2026-05-14 21:57:37',NULL,'TK0005','2026-05-14 21:57:37'),
+(2,1,'2026-05-26 12:14:13',NULL,'TK0001','2026-05-26 12:14:13');
 /*!40000 ALTER TABLE `member_visits` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -330,6 +331,45 @@ UNLOCK TABLES;
 commit;
 
 --
+-- Table structure for table `staff_schedule`
+--
+
+DROP TABLE IF EXISTS `staff_schedule`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `staff_schedule` (
+  `schedule_id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '班表ID',
+  `staff_id` int(6) unsigned NOT NULL COMMENT '員工ID',
+  `work_date` date NOT NULL COMMENT '上班日期',
+  `start_time` time NOT NULL COMMENT '上班時間',
+  `end_time` time NOT NULL COMMENT '下班時間',
+  `schedule_type` tinyint(4) NOT NULL DEFAULT 1 COMMENT '班別',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用',
+  `note` varchar(255) DEFAULT NULL COMMENT '備註',
+  `created_by` bigint(20) DEFAULT NULL COMMENT '建立人員',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`schedule_id`),
+  KEY `idx_work_date` (`work_date`),
+  KEY `idx_staff_date` (`staff_id`,`work_date`),
+  CONSTRAINT `fk_schedule_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`eid`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `staff_schedule`
+--
+
+LOCK TABLES `staff_schedule` WRITE;
+/*!40000 ALTER TABLE `staff_schedule` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `staff_schedule` VALUES
+(1,1,'2026-05-30','09:00:00','18:00:00',1,1,NULL,NULL,'2026-05-27 10:11:02','2026-05-27 10:11:02');
+/*!40000 ALTER TABLE `staff_schedule` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `ticket`
 --
 
@@ -389,7 +429,7 @@ CREATE TABLE `visit_rental_equipment` (
   KEY `fk_equipment` (`rental_id`),
   CONSTRAINT `fk_equipment` FOREIGN KEY (`rental_id`) REFERENCES `rental_equipment` (`rental_id`),
   CONSTRAINT `fk_visit` FOREIGN KEY (`visit_id`) REFERENCES `member_visits` (`visit_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -400,7 +440,8 @@ LOCK TABLES `visit_rental_equipment` WRITE;
 /*!40000 ALTER TABLE `visit_rental_equipment` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `visit_rental_equipment` VALUES
-(1,1,1,50.00,'2026-05-22 13:58:14');
+(1,1,1,50.00,'2026-05-22 13:58:14'),
+(2,2,1,20.00,'2026-05-26 12:14:13');
 /*!40000 ALTER TABLE `visit_rental_equipment` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -414,4 +455,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-25 15:32:06
+-- Dump completed on 2026-05-27 10:13:40

@@ -131,6 +131,185 @@ app.get('/api/staff/:eid', async (req, res) => {
   }
 });
 
+app.get('/api/staff_schedule', async (req, res) => {
+  const month = String(req.query.month ?? '').trim();
+
+  if (!/^\d{4}-\d{2}$/.test(month)) {
+    return res.status(400).json({ success: false, message: 'month must be YYYY-MM' });
+  }
+
+  const monthStart = `${month}-01`;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT
+        ss.schedule_id,
+        ss.staff_id,
+        s.name AS staff_name,
+        s.alias AS staff_alias,
+        s.employee_id,
+        ss.work_date,
+        TIME_FORMAT(ss.start_time, '%H:%i') AS start_time,
+        TIME_FORMAT(ss.end_time, '%H:%i') AS end_time,
+        ss.schedule_type,
+        ss.is_active,
+        ss.note,
+        ss.created_by,
+        creator.name AS created_by_name,
+        creator.alias AS created_by_alias,
+        ss.created_at,
+        ss.updated_at
+      FROM staff_schedule ss
+      INNER JOIN staff s ON s.eid = ss.staff_id
+      LEFT JOIN staff creator ON creator.eid = ss.created_by
+      WHERE ss.work_date >= ?
+        AND ss.work_date < DATE_ADD(?, INTERVAL 1 MONTH)
+      ORDER BY ss.work_date, ss.start_time, ss.schedule_id`,
+      [monthStart, monthStart]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('staff_schedule fetch error', err);
+    res.status(500).send('staff_schedule DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.get('/api/staff_schedule/:scheduleId', async (req, res) => {
+  const scheduleId = Number(req.params.scheduleId);
+
+  if (!scheduleId) {
+    return res.status(400).json({ success: false, message: 'Invalid schedule id' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT
+        ss.schedule_id,
+        ss.staff_id,
+        s.name AS staff_name,
+        s.alias AS staff_alias,
+        s.employee_id,
+        ss.work_date,
+        TIME_FORMAT(ss.start_time, '%H:%i') AS start_time,
+        TIME_FORMAT(ss.end_time, '%H:%i') AS end_time,
+        ss.schedule_type,
+        ss.is_active,
+        ss.note,
+        ss.created_by,
+        creator.name AS created_by_name,
+        creator.alias AS created_by_alias,
+        ss.created_at,
+        ss.updated_at
+      FROM staff_schedule ss
+      INNER JOIN staff s ON s.eid = ss.staff_id
+      LEFT JOIN staff creator ON creator.eid = ss.created_by
+      WHERE ss.schedule_id = ?`,
+      [scheduleId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).send('Schedule not found');
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('staff_schedule detail error', err);
+    res.status(500).send('staff_schedule DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/staff_schedule', async (req, res) => {
+  const staffId = Number(req.body.staff_id);
+  const workDate = String(req.body.work_date ?? '').trim();
+  const startTime = String(req.body.start_time ?? '').trim();
+  const endTime = String(req.body.end_time ?? '').trim();
+  const isActive = Number(req.body.is_active) === 0 ? 0 : 1;
+  const createdByRaw = req.body.created_by;
+  const createdBy = createdByRaw === null || createdByRaw === undefined || createdByRaw === ''
+    ? null
+    : Number(createdByRaw);
+  const note = req.body.note === null || req.body.note === undefined
+    ? null
+    : String(req.body.note).trim();
+  const scheduleType = req.body.schedule_type === null || req.body.schedule_type === undefined || req.body.schedule_type === ''
+    ? 1
+    : Number(req.body.schedule_type);
+
+  if (!staffId) {
+    return res.status(400).json({ success: false, message: 'staff_id is required' });
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) {
+    return res.status(400).json({ success: false, message: 'work_date must be YYYY-MM-DD' });
+  }
+
+  if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+    return res.status(400).json({ success: false, message: 'start_time and end_time must be HH:mm' });
+  }
+
+  if (startTime >= endTime) {
+    return res.status(400).json({ success: false, message: 'start_time must be earlier than end_time' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const staffRows = await conn.query(
+      'SELECT eid FROM staff WHERE eid = ?',
+      [staffId]
+    );
+
+    if (!staffRows.length) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    if (createdBy !== null) {
+      const creatorRows = await conn.query(
+        'SELECT eid FROM staff WHERE eid = ?',
+        [createdBy]
+      );
+
+      if (!creatorRows.length) {
+        return res.status(404).json({ success: false, message: 'Creator not found' });
+      }
+    }
+
+    const result = await conn.query(
+      `INSERT INTO staff_schedule (
+        staff_id,
+        work_date,
+        start_time,
+        end_time,
+        schedule_type,
+        is_active,
+        note,
+        created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [staffId, workDate, startTime, endTime, scheduleType, isActive, note, createdBy]
+    );
+
+    res.json({
+      success: true,
+      schedule_id: Number(result.insertId),
+    });
+  } catch (err) {
+    console.error('staff_schedule create error', err);
+    res.status(500).send('staff_schedule DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/staff', async (req, res) => {
   const staffFields = [
     'name',
