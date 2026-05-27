@@ -2,10 +2,10 @@
   <div class="visit-history-page">
     <section class="history-hero">
       <div>
-        <p class="history-eyebrow">Visit History</p>
-        <h1>交易紀錄總覽</h1>
+        <p class="history-eyebrow">Visit Search</p>
+        <h1>交易紀錄查詢</h1>
         <p class="history-description">
-          左側顯示今天的入場狀況，右側保留全部歷史紀錄，方便櫃台快速查詢。
+          透過會員手機、商品資訊與入場時間區間快速篩選交易紀錄。訂單編號與發票相關欄位已先預留前端位置，待資料表完成後可直接串接。
         </p>
       </div>
       <div class="history-clock-card">
@@ -14,157 +14,249 @@
       </div>
     </section>
 
-    <section class="history-layout">
-      <article class="history-panel accent-today">
-        <div class="panel-header">
-          <div>
-            <p class="panel-tag">Today</p>
-            <h2>當日入場</h2>
-          </div>
+    <section class="search-card">
+      <div class="search-grid">
+        <label class="search-field">
+          <span>手機號碼</span>
+          <input
+            v-model.trim="filters.phone"
+            type="text"
+            inputmode="numeric"
+            placeholder="輸入會員手機號碼"
+            @keyup.enter="submitSearch"
+          />
+        </label>
+
+        <label class="search-field">
+          <span>訂單編號</span>
+          <input
+            v-model.trim="filters.orderNumber"
+            type="text"
+            placeholder="輸入訂單編號"
+            @keyup.enter="submitSearch"
+          />
+        </label>
+
+        <label class="search-field">
+          <span>發票狀態</span>
+          <select v-model="filters.invoiceStatus">
+            <option value="">全部</option>
+            <option value="issued">已開立</option>
+            <option value="pending">未開立</option>
+            <option value="voided">已作廢</option>
+          </select>
+        </label>
+
+        <label class="search-field">
+          <span>發票號碼</span>
+          <input
+            v-model.trim="filters.invoiceNumber"
+            type="text"
+            placeholder="輸入發票號碼"
+            @keyup.enter="submitSearch"
+          />
+        </label>
+
+        <label class="search-field">
+          <span>商品編號</span>
+          <input
+            v-model.trim="filters.productCode"
+            type="text"
+            placeholder="輸入商品編號"
+            @keyup.enter="submitSearch"
+          />
+        </label>
+
+        <label class="search-field">
+          <span>商品名稱</span>
+          <input
+            v-model.trim="filters.productName"
+            type="text"
+            placeholder="輸入商品名稱"
+            @keyup.enter="submitSearch"
+          />
+        </label>
+
+        <label class="search-field">
+          <span>入場時間</span>
+          <input v-model="filters.startDate" type="date" />
+        </label>
+
+        <label class="search-field">
+          <span>至</span>
+          <input v-model="filters.endDate" type="date" />
+        </label>
+      </div>
+
+      <div class="search-actions">
+        <div class="search-hint">
+          `訂單編號`、`發票狀態`、`發票號碼` 目前僅建立前端欄位，尚未串接資料庫。
+        </div>
+        <div class="search-button-group">
           <button
             type="button"
-            class="panel-action"
-            :disabled="isLoadingTodayVisits"
-            @click="fetchTodayVisits"
+            class="primary-button"
+            :disabled="isLoadingVisits"
+            @click="submitSearch"
           >
-            {{ isLoadingTodayVisits ? '更新中...' : '重新整理' }}
+            {{ isLoadingVisits ? '搜尋中...' : '搜尋' }}
           </button>
-        </div>
-
-        <p class="panel-meta">共 {{ todayVisitRecords.length }} 筆</p>
-        <p v-if="todayVisitError" class="panel-message is-error">{{ todayVisitError }}</p>
-        <p v-else-if="isLoadingTodayVisits" class="panel-message">正在載入今日入場紀錄...</p>
-        <p v-else-if="!todayVisitRecords.length" class="panel-message">今天還沒有入場紀錄。</p>
-
-        <div v-else class="visit-list">
-          <article
-            v-for="visit in todayVisitRecords"
-            :key="visit.visit_id"
-            class="visit-card"
-          >
-            <div class="visit-card-main">
-              <div>
-                <p class="visit-member">{{ visit.member_name }}</p>
-                <p class="visit-code">{{ visit.member_code }}</p>
-              </div>
-              <span class="visit-type">{{ visit.visit_type || '未指定票種' }}</span>
-            </div>
-
-            <div class="visit-card-info">
-              <span>{{ formatDateTime(visit.checkin_time) }}</span>
-              <button
-                type="button"
-                class="record-link-button"
-                :disabled="visit.rentalsLoading"
-                @click="openRentalDialog(visit)"
-              >
-                {{ visit.rentalsLoading ? '讀取中...' : '查看租借' }}
-              </button>
-            </div>
-          </article>
-        </div>
-      </article>
-
-      <article class="history-panel accent-all">
-        <div class="panel-header">
-          <div>
-            <p class="panel-tag">Archive</p>
-            <h2>歷史所有入場</h2>
-          </div>
           <button
             type="button"
-            class="panel-action"
-            :disabled="isLoadingAllVisits"
-            @click="fetchAllVisits"
+            class="secondary-button"
+            :disabled="isLoadingVisits"
+            @click="resetFilters"
           >
-            {{ isLoadingAllVisits ? '更新中...' : '重新整理' }}
+            重設
           </button>
         </div>
+      </div>
 
-        <p class="panel-meta">共 {{ allVisitRecords.length }} 筆</p>
-        <p v-if="allVisitError" class="panel-message is-error">{{ allVisitError }}</p>
-        <p v-else-if="isLoadingAllVisits" class="panel-message">正在載入全部歷史紀錄...</p>
-        <p v-else-if="!allVisitRecords.length" class="panel-message">目前還沒有任何入場紀錄。</p>
+      <p v-if="searchMessage" class="search-message" :class="searchMessageClass">
+        {{ searchMessage }}
+      </p>
+    </section>
 
-        <div v-else class="visit-table-shell">
-          <table class="visit-table">
-            <thead>
-              <tr>
-                <th>會員編號</th>
-                <th>姓名</th>
-                <th>票種</th>
-                <th>入場時間</th>
-                <th>租借</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="visit in allVisitRecords" :key="visit.visit_id">
-                <td>{{ visit.member_code }}</td>
-                <td>{{ visit.member_name }}</td>
-                <td>{{ visit.visit_type || '未指定票種' }}</td>
-                <td>{{ formatDateTime(visit.checkin_time) }}</td>
-                <td>
-                  <button
-                    type="button"
-                    class="record-link-button"
-                    :disabled="visit.rentalsLoading"
-                    @click="openRentalDialog(visit)"
-                  >
-                    {{ visit.rentalsLoading ? '讀取中...' : '查看租借' }}
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+    <section class="results-card">
+      <div class="results-header">
+        <div>
+          <p class="results-tag">Results</p>
+          <h2>查詢結果</h2>
         </div>
-      </article>
+        <p class="results-count">共 {{ filteredVisitRecords.length }} 筆</p>
+      </div>
+
+      <div class="results-table-shell">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>成立時間</th>
+              <th>訂單資訊</th>
+              <th>發票號碼</th>
+              <th>會員編號</th>
+              <th>手機號碼</th>
+              <th>訂單金額</th>
+            </tr>
+          </thead>
+          <tbody v-if="filteredVisitRecords.length">
+            <tr v-for="visit in filteredVisitRecords" :key="visit.visit_id">
+              <td>{{ formatDateTime(visit.created_at || visit.checkin_time) }}</td>
+              <td>
+                <button
+                  type="button"
+                  class="order-link-button"
+                  @click="openOrderDialog(visit)"
+                >
+                  {{ visit.displayOrderNumber }}
+                </button>
+              </td>
+              <td>{{ visit.displayInvoiceNumber }}</td>
+              <td>{{ visit.member_code }}</td>
+              <td>{{ visit.phone || '-' }}</td>
+              <td>${{ formatCurrency(visit.orderAmount) }}</td>
+            </tr>
+          </tbody>
+          <tbody v-else>
+            <tr>
+              <td colspan="6" class="results-empty-cell">
+                <span v-if="!hasSearched && !isLoadingVisits">請先輸入條件後搜尋交易紀錄。</span>
+                <span v-else-if="isLoadingVisits">正在整理交易紀錄資料...</span>
+                <span v-else>查無符合條件的交易紀錄。</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <div
-      v-if="isRentalDialogOpen"
+      v-if="isOrderDialogOpen"
       class="member-dialog-overlay"
-      @click.self="closeRentalDialog"
+      @click.self="closeOrderDialog"
     >
-      <aside class="member-dialog" aria-label="租借明細">
+      <aside class="member-dialog" aria-label="訂單資訊">
         <div class="member-dialog-header">
           <div>
-            <p class="panel-tag">Rental Detail</p>
-            <h2>租借明細</h2>
+            <p class="results-tag">Order Detail</p>
+            <h2>訂單資訊</h2>
           </div>
           <button
             type="button"
             class="dialog-close-button"
-            aria-label="關閉租借明細"
-            @click="closeRentalDialog"
+            aria-label="關閉訂單資訊"
+            @click="closeOrderDialog"
           >
             ×
           </button>
         </div>
 
-        <div v-if="selectedRentalVisit">
-          <p class="dialog-summary">
-            {{ selectedRentalVisit.member_code }} ｜ {{ selectedRentalVisit.member_name }} ｜ {{ formatDateTime(selectedRentalVisit.checkin_time) }}
-          </p>
-
-          <p v-if="selectedRentalVisit.rentalsLoading" class="panel-message">正在載入租借明細...</p>
-          <p v-else-if="selectedRentalVisit.rentalsError" class="panel-message is-error">
-            {{ selectedRentalVisit.rentalsError }}
-          </p>
-          <p v-else-if="!selectedRentalVisit.rentals.length" class="panel-message">這筆入場沒有租借裝備。</p>
-
-          <div v-else class="rental-list">
-            <article
-              v-for="rental in selectedRentalVisit.rentals"
-              :key="rental.id"
-              class="rental-card"
-            >
-              <div>
-                <p class="rental-name">{{ rental.rental_name }}</p>
-                <p class="rental-code">{{ rental.rental_code }}</p>
-              </div>
-              <strong class="rental-price">${{ rental.rental_price }}</strong>
-            </article>
+        <div v-if="selectedOrderVisit" class="order-detail">
+          <div class="order-summary-grid">
+            <div class="summary-item">
+              <span>成立時間</span>
+              <strong>{{ formatDateTime(selectedOrderVisit.created_at || selectedOrderVisit.checkin_time) }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>會員編號</span>
+              <strong>{{ selectedOrderVisit.member_code }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>手機號碼</span>
+              <strong>{{ selectedOrderVisit.phone || '-' }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>訂單金額</span>
+              <strong>${{ formatCurrency(selectedOrderVisit.orderAmount) }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>訂單編號</span>
+              <strong>{{ selectedOrderVisit.displayOrderNumber }}</strong>
+            </div>
+            <div class="summary-item">
+              <span>發票號碼</span>
+              <strong>{{ selectedOrderVisit.displayInvoiceNumber }}</strong>
+            </div>
           </div>
+
+          <section class="detail-section">
+            <div class="detail-section-header">
+              <h3>票種</h3>
+              <span class="detail-price">${{ formatCurrency(selectedOrderVisit.ticketPrice) }}</span>
+            </div>
+            <div class="detail-pill-list">
+              <span class="detail-pill">
+                {{ selectedOrderVisit.ticketCode || '-' }} ｜ {{ selectedOrderVisit.ticketName || selectedOrderVisit.visit_type || '未指定票種' }}
+              </span>
+            </div>
+          </section>
+
+          <section class="detail-section">
+            <div class="detail-section-header">
+              <h3>租借</h3>
+              <span class="detail-price">
+                ${{ formatCurrency(selectedOrderVisit.rentalAmount) }}
+              </span>
+            </div>
+            <p v-if="selectedOrderVisit.rentalsLoading" class="detail-empty">正在載入租借內容...</p>
+            <p v-else-if="selectedOrderVisit.rentalsError" class="detail-empty is-error">
+              {{ selectedOrderVisit.rentalsError }}
+            </p>
+            <p v-else-if="!selectedOrderVisit.rentals.length" class="detail-empty">本筆訂單沒有租借項目。</p>
+
+            <div v-else class="rental-list">
+              <article
+                v-for="rental in selectedOrderVisit.rentals"
+                :key="rental.id"
+                class="rental-card"
+              >
+                <div>
+                  <p class="rental-name">{{ rental.rental_name }}</p>
+                  <p class="rental-code">{{ rental.rental_code }}</p>
+                </div>
+                <strong class="rental-price">${{ formatCurrency(rental.rental_price) }}</strong>
+              </article>
+            </div>
+          </section>
         </div>
       </aside>
     </div>
@@ -174,20 +266,35 @@
 <script>
 import axios from 'axios'
 
-const decorateVisits = (visits) =>
-  visits.map((visit) => ({
-    ...visit,
-    rentals: [],
-    rentalsLoading: false,
-    rentalsError: '',
-  }))
+const createFilters = () => ({
+  phone: '',
+  orderNumber: '',
+  invoiceStatus: '',
+  invoiceNumber: '',
+  productCode: '',
+  productName: '',
+  startDate: '',
+  endDate: '',
+})
+
+const normalizeText = (value) => String(value ?? '').trim().toLowerCase()
+
+const normalizeDigits = (value) => String(value ?? '').replace(/\D/g, '')
+
+const createDisplayOrderNumber = (visit) =>
+  `OD${String(visit.visit_id ?? '').padStart(8, '0')}`
 
 export default {
-  mounted() {
+  beforeCreate() {
+    if (!localStorage.getItem('islogin')) {
+      this.$router.push('/staff')
+    }
+  },
+
+  async mounted() {
     this.updateCurrentDateTime()
     this.clockTimer = window.setInterval(this.updateCurrentDateTime, 1000)
-    this.fetchTodayVisits()
-    this.fetchAllVisits()
+    await this.preloadSearchData()
   },
 
   beforeUnmount() {
@@ -200,15 +307,44 @@ export default {
     return {
       datetime: '',
       clockTimer: null,
-      todayVisitRecords: [],
-      allVisitRecords: [],
-      isLoadingTodayVisits: false,
-      isLoadingAllVisits: false,
-      todayVisitError: '',
-      allVisitError: '',
-      isRentalDialogOpen: false,
-      selectedRentalVisit: null,
+      filters: createFilters(),
+      visits: [],
+      ticketOptions: [],
+      hasLoadedVisits: false,
+      hasSearched: false,
+      isLoadingVisits: false,
+      searchMessage: '',
+      searchMessageType: '',
+      isOrderDialogOpen: false,
+      selectedOrderVisit: null,
     }
+  },
+
+  computed: {
+    filteredVisitRecords() {
+      if (!this.hasAnyFilter) {
+        return []
+      }
+
+      return this.visits.filter((visit) => this.matchesFilters(visit))
+    },
+
+    hasAnyFilter() {
+      return Boolean(
+        this.filters.phone
+        || this.filters.orderNumber
+        || this.filters.invoiceStatus
+        || this.filters.invoiceNumber
+        || this.filters.productCode
+        || this.filters.productName
+        || this.filters.startDate
+        || this.filters.endDate
+      )
+    },
+
+    searchMessageClass() {
+      return this.searchMessageType === 'error' ? 'is-error' : 'is-info'
+    },
   },
 
   methods: {
@@ -216,64 +352,210 @@ export default {
       this.datetime = new Date().toLocaleString('zh-TW', { hour12: false })
     },
 
-    async fetchTodayVisits() {
-      this.isLoadingTodayVisits = true
-      this.todayVisitError = ''
+    async preloadSearchData() {
+      if (this.hasLoadedVisits || this.isLoadingVisits) {
+        return
+      }
+
+      this.isLoadingVisits = true
 
       try {
-        const res = await axios.get('/api/member_visits?scope=today')
-        this.todayVisitRecords = decorateVisits(Array.isArray(res.data) ? res.data : [])
-        await this.populateVisitRentals(this.todayVisitRecords)
+        await Promise.all([this.fetchTickets(), this.fetchAllVisits()])
+        this.hasLoadedVisits = true
       } catch (err) {
-        console.error('載入當日入場紀錄失敗', err)
-        this.todayVisitError = '載入當日入場紀錄失敗'
+        console.error('預載交易紀錄失敗', err)
+        this.searchMessage = '載入交易紀錄失敗'
+        this.searchMessageType = 'error'
       } finally {
-        this.isLoadingTodayVisits = false
+        this.isLoadingVisits = false
       }
+    },
+
+    async submitSearch() {
+      this.hasSearched = this.hasAnyFilter
+      this.searchMessage = ''
+      this.searchMessageType = ''
+
+      if (!this.hasAnyFilter) {
+        this.searchMessage = '請至少輸入一個查詢條件。'
+        this.searchMessageType = 'error'
+        return
+      }
+
+      if (this.filters.startDate && this.filters.endDate && this.filters.startDate > this.filters.endDate) {
+        this.searchMessage = '入場時間的開始日期不能晚於結束日期。'
+        this.searchMessageType = 'error'
+        return
+      }
+
+      try {
+        await this.preloadSearchData()
+
+        if (
+          this.filters.orderNumber
+          || this.filters.invoiceStatus
+          || this.filters.invoiceNumber
+        ) {
+          this.searchMessage = '訂單編號、發票狀態、發票號碼目前僅建立前端欄位，尚未納入實際搜尋。'
+          this.searchMessageType = 'info'
+        }
+      } catch (err) {
+        console.error('查詢交易紀錄失敗', err)
+        this.searchMessage = '查詢交易紀錄失敗'
+        this.searchMessageType = 'error'
+      }
+    },
+
+    resetFilters() {
+      this.filters = createFilters()
+      this.hasSearched = false
+      this.searchMessage = ''
+      this.searchMessageType = ''
+      this.selectedOrderVisit = null
+      this.isOrderDialogOpen = false
+    },
+
+    async fetchTickets() {
+      if (this.ticketOptions.length) {
+        return
+      }
+
+      const res = await axios.get('/api/ticket')
+      this.ticketOptions = Array.isArray(res.data) ? res.data : []
     },
 
     async fetchAllVisits() {
-      this.isLoadingAllVisits = true
-      this.allVisitError = ''
+      const res = await axios.get('/api/member_visits?scope=all')
+      const rawVisits = Array.isArray(res.data) ? res.data : []
+      const enrichedVisits = await Promise.all(rawVisits.map((visit) => this.enrichVisit(visit)))
+      this.visits = enrichedVisits.sort((a, b) => {
+        const timeA = new Date(a.created_at || a.checkin_time).getTime()
+        const timeB = new Date(b.created_at || b.checkin_time).getTime()
+        return timeB - timeA
+      })
+    },
 
-      try {
-        const res = await axios.get('/api/member_visits?scope=all')
-        this.allVisitRecords = decorateVisits(Array.isArray(res.data) ? res.data : [])
-        await this.populateVisitRentals(this.allVisitRecords)
-      } catch (err) {
-        console.error('載入歷史入場紀錄失敗', err)
-        this.allVisitError = '載入歷史入場紀錄失敗'
-      } finally {
-        this.isLoadingAllVisits = false
+    async enrichVisit(visit) {
+      const rentals = await this.fetchVisitRentals(visit.visit_id)
+      const ticket = this.findTicketByCode(visit.visit_type)
+      const ticketPrice = Number(ticket?.ticket_price ?? 0)
+      const rentalAmount = rentals.reduce(
+        (total, rental) => total + Number(rental.rental_price ?? 0),
+        0
+      )
+
+      return {
+        ...visit,
+        rentals,
+        rentalsLoading: false,
+        rentalsError: '',
+        ticketCode: ticket?.ticket_code ?? visit.visit_type ?? '',
+        ticketName: ticket?.ticket_name ?? visit.visit_type ?? '',
+        ticketPrice,
+        rentalAmount,
+        orderAmount: ticketPrice + rentalAmount,
+        displayOrderNumber: createDisplayOrderNumber(visit),
+        displayInvoiceNumber: '-',
+        displayInvoiceStatus: 'pending',
       }
     },
 
-    async populateVisitRentals(visits) {
-      await Promise.all(visits.map((visit) => this.fetchVisitRentals(visit)))
+    findTicketByCode(ticketCode) {
+      return this.ticketOptions.find((ticket) => ticket.ticket_code === ticketCode) ?? null
     },
 
-    async fetchVisitRentals(visit) {
-      visit.rentalsLoading = true
-      visit.rentalsError = ''
+    async fetchVisitRentals(visitId) {
+      const res = await axios.get(`/api/member_visits/${visitId}/rentals`)
+      return Array.isArray(res.data) ? res.data : []
+    },
 
-      try {
-        const res = await axios.get(`/api/member_visits/${visit.visit_id}/rentals`)
-        visit.rentals = Array.isArray(res.data) ? res.data : []
-      } catch (err) {
-        console.error(`載入 visit ${visit.visit_id} 租借明細失敗`, err)
-        visit.rentalsError = '載入租借明細失敗'
-      } finally {
-        visit.rentalsLoading = false
+    matchesFilters(visit) {
+      if (this.filters.phone) {
+        const keyword = normalizeDigits(this.filters.phone)
+        const target = normalizeDigits(visit.phone)
+        if (!target.includes(keyword)) {
+          return false
+        }
       }
+
+      if (this.filters.orderNumber) {
+        const keyword = normalizeText(this.filters.orderNumber)
+        if (!normalizeText(visit.displayOrderNumber).includes(keyword)) {
+          return false
+        }
+      }
+
+      if (this.filters.invoiceStatus) {
+        if (normalizeText(visit.displayInvoiceStatus) !== normalizeText(this.filters.invoiceStatus)) {
+          return false
+        }
+      }
+
+      if (this.filters.invoiceNumber) {
+        const keyword = normalizeText(this.filters.invoiceNumber)
+        if (!normalizeText(visit.displayInvoiceNumber).includes(keyword)) {
+          return false
+        }
+      }
+
+      if (this.filters.productCode) {
+        const keyword = normalizeText(this.filters.productCode)
+        const ticketCode = normalizeText(visit.ticketCode)
+        const rentalCodes = visit.rentals.map((rental) => normalizeText(rental.rental_code))
+        if (!ticketCode.includes(keyword) && !rentalCodes.some((code) => code.includes(keyword))) {
+          return false
+        }
+      }
+
+      if (this.filters.productName) {
+        const keyword = normalizeText(this.filters.productName)
+        const ticketName = normalizeText(visit.ticketName)
+        const rentalNames = visit.rentals.map((rental) => normalizeText(rental.rental_name))
+        if (!ticketName.includes(keyword) && !rentalNames.some((name) => name.includes(keyword))) {
+          return false
+        }
+      }
+
+      if (!this.matchesDateRange(visit.checkin_time)) {
+        return false
+      }
+
+      return true
+    },
+
+    matchesDateRange(value) {
+      if (!this.filters.startDate && !this.filters.endDate) {
+        return true
+      }
+
+      const visitDate = new Date(value)
+      if (Number.isNaN(visitDate.getTime())) {
+        return false
+      }
+
+      if (this.filters.startDate) {
+        const startDate = new Date(`${this.filters.startDate}T00:00:00`)
+        if (visitDate < startDate) {
+          return false
+        }
+      }
+
+      if (this.filters.endDate) {
+        const endDate = new Date(`${this.filters.endDate}T23:59:59`)
+        if (visitDate > endDate) {
+          return false
+        }
+      }
+
+      return true
     },
 
     formatDateTime(value) {
       if (!value) {
-        return ''
+        return '-'
       }
 
       const date = new Date(value)
-
       if (Number.isNaN(date.getTime())) {
         return value
       }
@@ -281,14 +563,53 @@ export default {
       return date.toLocaleString('zh-TW', { hour12: false })
     },
 
-    openRentalDialog(visit) {
-      this.selectedRentalVisit = visit
-      this.isRentalDialogOpen = true
+    formatCurrency(value) {
+      const amount = Number(value ?? 0)
+      return amount.toLocaleString('zh-TW')
     },
 
-    closeRentalDialog() {
-      this.isRentalDialogOpen = false
-      this.selectedRentalVisit = null
+    openOrderDialog(visit) {
+      this.selectedOrderVisit = visit
+      this.isOrderDialogOpen = true
+    },
+
+    closeOrderDialog() {
+      this.isOrderDialogOpen = false
+      this.selectedOrderVisit = null
+    },
+  },
+
+  watch: {
+    filters: {
+      async handler() {
+        this.hasSearched = this.hasAnyFilter
+        this.searchMessage = ''
+        this.searchMessageType = ''
+
+        if (!this.hasAnyFilter) {
+          return
+        }
+
+        if (this.filters.startDate && this.filters.endDate && this.filters.startDate > this.filters.endDate) {
+          this.searchMessage = '入場時間的開始日期不能晚於結束日期。'
+          this.searchMessageType = 'error'
+          return
+        }
+
+        if (
+          this.filters.orderNumber
+          || this.filters.invoiceStatus
+          || this.filters.invoiceNumber
+        ) {
+          this.searchMessage = '訂單編號、發票狀態、發票號碼目前先用前端占位資料做快速搜尋。'
+          this.searchMessageType = 'info'
+        }
+
+        if (!this.hasLoadedVisits) {
+          await this.preloadSearchData()
+        }
+      },
+      deep: true,
     },
   },
 }
@@ -296,20 +617,22 @@ export default {
 
 <style scoped>
 .visit-history-page {
-  --history-bg: linear-gradient(180deg, #fffaf3 0%, #f6efe3 100%);
-  --panel-bg: rgba(255, 255, 255, 0.92);
-  --panel-border: rgba(151, 104, 49, 0.14);
-  --text-main: #33251a;
-  --text-soft: #7d6653;
-  --accent-today: #c8742f;
-  --accent-all: #296d68;
-  --shadow-soft: 0 18px 40px rgba(93, 62, 31, 0.12);
+  --page-bg: linear-gradient(180deg, #eef5ef 0%, #f8fbf8 100%);
+  --panel-bg: rgba(255, 255, 255, 0.94);
+  --panel-border: rgba(44, 83, 67, 0.16);
+  --text-main: #1f3128;
+  --text-soft: #697f73;
+  --accent: #35506e;
+  --accent-strong: #294562;
+  --mint: #4ab985;
+  --shadow-soft: 0 18px 42px rgba(36, 66, 52, 0.12);
+  --error: #b13d34;
   margin: 0 auto;
   min-height: 100%;
-  max-width: 1380px;
+  max-width: 1480px;
   padding: 32px 24px 40px;
   color: var(--text-main);
-  background: var(--history-bg);
+  background: var(--page-bg);
 }
 
 .history-hero {
@@ -317,11 +640,11 @@ export default {
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .history-eyebrow,
-.panel-tag {
+.results-tag {
   margin: 0 0 8px;
   color: var(--text-soft);
   font-size: 12px;
@@ -331,24 +654,31 @@ export default {
 }
 
 .history-hero h1,
-.panel-header h2,
-.member-dialog-header h2 {
+.results-header h2,
+.member-dialog-header h2,
+.detail-section h3 {
   margin: 0;
 }
 
 .history-description {
-  max-width: 680px;
+  max-width: 760px;
   margin: 12px 0 0;
   color: var(--text-soft);
   line-height: 1.7;
 }
 
+.history-clock-card,
+.search-card,
+.results-card,
+.member-dialog {
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  background: var(--panel-bg);
+  box-shadow: var(--shadow-soft);
+}
+
 .history-clock-card {
   min-width: 220px;
-  border: 1px solid var(--panel-border);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.75);
-  box-shadow: var(--shadow-soft);
   padding: 18px 20px;
 }
 
@@ -359,177 +689,178 @@ export default {
   font-size: 13px;
 }
 
-.history-layout {
+.search-card,
+.results-card {
+  padding: 24px;
+}
+
+.search-card {
+  margin-bottom: 24px;
+}
+
+.search-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr);
-  gap: 24px;
-  align-items: start;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 20px;
 }
 
-.history-panel {
-  border: 1px solid var(--panel-border);
-  border-radius: 26px;
-  background: var(--panel-bg);
-  box-shadow: var(--shadow-soft);
-  padding: 22px;
-  backdrop-filter: blur(6px);
-}
-
-.history-panel.accent-today {
-  position: sticky;
-  top: 24px;
-}
-
-.history-panel.accent-today .panel-action,
-.history-panel.accent-today .visit-type {
-  color: var(--accent-today);
-}
-
-.history-panel.accent-all .panel-action,
-.history-panel.accent-all .visit-type {
-  color: var(--accent-all);
-}
-
-.panel-header {
+.search-field {
   display: flex;
-  align-items: start;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.search-field span {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.search-field input,
+.search-field select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 2px solid rgba(53, 80, 110, 0.12);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--text-main);
+  font: inherit;
+  padding: 14px 16px;
+}
+
+.search-field input:focus,
+.search-field select:focus {
+  outline: 2px solid rgba(74, 185, 133, 0.18);
+  border-color: var(--accent);
+}
+
+.search-actions {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 10px;
+  margin-top: 22px;
 }
 
-.panel-action {
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: inset 0 0 0 1px rgba(51, 37, 26, 0.1);
-  cursor: pointer;
-  font: inherit;
-  font-weight: 700;
-  padding: 10px 16px;
-}
-
-.panel-action:disabled {
-  opacity: 0.55;
-  cursor: wait;
-}
-
-.panel-meta,
-.panel-message,
-.dialog-summary {
+.search-hint {
   color: var(--text-soft);
-}
-
-.panel-meta {
-  margin: 0 0 18px;
-}
-
-.panel-message {
-  margin: 0;
   line-height: 1.6;
 }
 
-.panel-message.is-error {
-  color: #b33b2f;
-}
-
-.visit-list {
-  display: grid;
-  gap: 14px;
-}
-
-.visit-card {
-  border: 1px solid rgba(151, 104, 49, 0.14);
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 243, 235, 0.92) 100%);
-  padding: 18px;
-}
-
-.visit-card-main,
-.visit-card-info,
-.rental-card {
+.search-button-group {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
-.visit-card-info {
-  margin-top: 16px;
-  color: var(--text-soft);
-  font-size: 14px;
-}
-
-.visit-member,
-.rental-name {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.visit-code,
-.rental-code {
-  margin: 4px 0 0;
-  color: var(--text-soft);
-  font-size: 13px;
-}
-
-.visit-type {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: inset 0 0 0 1px rgba(51, 37, 26, 0.08);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 8px 12px;
-  white-space: nowrap;
-}
-
-.visit-table-shell {
-  overflow-x: auto;
-}
-
-.visit-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.visit-table th,
-.visit-table td {
-  padding: 14px 12px;
-  border-bottom: 1px solid rgba(151, 104, 49, 0.12);
-  text-align: left;
-  white-space: nowrap;
-}
-
-.visit-table th {
-  color: var(--text-soft);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.record-link-button {
+.primary-button,
+.secondary-button,
+.order-link-button,
+.dialog-close-button {
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: inset 0 0 0 1px rgba(51, 37, 26, 0.1);
   cursor: pointer;
   font: inherit;
   font-weight: 700;
-  padding: 8px 12px;
 }
 
-.record-link-button:disabled {
+.primary-button,
+.secondary-button {
+  min-width: 110px;
+  padding: 12px 20px;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: #fff;
+}
+
+.secondary-button {
+  background: rgba(53, 80, 110, 0.08);
+  color: var(--accent-strong);
+  box-shadow: inset 0 0 0 1px rgba(53, 80, 110, 0.18);
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
   opacity: 0.55;
   cursor: wait;
+}
+
+.search-message {
+  margin: 16px 0 0;
+  line-height: 1.6;
+}
+
+.search-message.is-error {
+  color: var(--error);
+}
+
+.search-message.is-info {
+  color: var(--text-soft);
+}
+
+.results-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.results-count {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.results-empty {
+  color: var(--text-soft);
+  line-height: 1.7;
+  padding: 18px 0 6px;
+}
+
+.results-empty-cell {
+  color: var(--text-soft);
+  text-align: center !important;
+  line-height: 1.7;
+  padding: 28px 16px !important;
+}
+
+.results-table-shell {
+  overflow-x: auto;
+}
+
+.results-table {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+}
+
+.results-table th,
+.results-table td {
+  padding: 16px 14px;
+  border-bottom: 1px solid rgba(44, 83, 67, 0.12);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.results-table th {
+  background: #4ab985;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.order-link-button {
+  background: transparent;
+  color: #2b6cb0;
+  padding: 0;
+  text-decoration: underline;
 }
 
 .member-dialog-overlay {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: rgba(32, 20, 10, 0.35);
+  background: rgba(24, 28, 26, 0.38);
   backdrop-filter: blur(4px);
 }
 
@@ -537,14 +868,13 @@ export default {
   position: fixed;
   top: 0;
   right: 0;
-  width: min(430px, 92vw);
+  width: min(520px, 94vw);
   height: 100vh;
   box-sizing: border-box;
   overflow-y: auto;
-  background: #fffaf6;
-  box-shadow: -16px 0 40px rgba(44, 30, 17, 0.18);
+  background: #fdfefd;
   padding: 24px;
-  animation: slide-in-from-right 0.25s ease;
+  animation: slide-in-from-right 0.24s ease;
 }
 
 .member-dialog-header {
@@ -558,37 +888,135 @@ export default {
 .dialog-close-button {
   width: 40px;
   height: 40px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(51, 37, 26, 0.08);
-  cursor: pointer;
+  background: rgba(53, 80, 110, 0.08);
+  color: var(--accent-strong);
   font-size: 24px;
   line-height: 1;
+}
+
+.order-detail {
+  display: grid;
+  gap: 18px;
+}
+
+.order-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.summary-item,
+.detail-section,
+.rental-card {
+  border: 1px solid rgba(44, 83, 67, 0.12);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+}
+
+.summary-item span,
+.detail-empty {
+  color: var(--text-soft);
+}
+
+.detail-section {
+  padding: 16px;
+}
+
+.detail-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.detail-price {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.detail-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.detail-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: rgba(74, 185, 133, 0.12);
+  color: #266247;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
+.detail-empty {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.detail-empty.is-error {
+  color: var(--error);
 }
 
 .rental-list {
   display: grid;
   gap: 12px;
+  margin-top: 12px;
 }
 
 .rental-card {
-  border: 1px solid rgba(151, 104, 49, 0.12);
-  border-radius: 18px;
-  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 14px 16px;
+}
+
+.rental-name {
+  margin: 0;
+  font-weight: 700;
+}
+
+.rental-code {
+  margin: 4px 0 0;
+  color: var(--text-soft);
+  font-size: 13px;
 }
 
 .rental-price {
   white-space: nowrap;
 }
 
-@media (max-width: 960px) {
-  .history-layout {
-    grid-template-columns: 1fr;
+@media (max-width: 1180px) {
+  .search-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .history-hero,
+  .search-actions,
+  .results-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .history-panel.accent-today {
-    position: static;
+  .search-button-group {
+    justify-content: stretch;
+  }
+
+  .primary-button,
+  .secondary-button {
+    flex: 1;
   }
 }
 
@@ -597,30 +1025,19 @@ export default {
     padding: 24px 16px 32px;
   }
 
-  .history-hero,
-  .panel-header,
-  .visit-card-main,
-  .visit-card-info,
-  .rental-card,
-  .member-dialog-header {
-    flex-direction: column;
-    align-items: stretch;
+  .search-grid,
+  .order-summary-grid {
+    grid-template-columns: 1fr;
   }
 
   .history-clock-card {
     width: 100%;
   }
 
-  .visit-type,
-  .panel-action,
-  .record-link-button {
-    justify-content: center;
-    text-align: center;
-  }
-
-  .visit-table th,
-  .visit-table td {
-    padding: 12px 10px;
+  .rental-card,
+  .detail-section-header {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
