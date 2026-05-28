@@ -11,33 +11,20 @@
 
       <div class="calendar-actions">
         <div class="calendar-controls">
-          <button type="button" class="calendar-nav-button" @click="goToPreviousMonth">
-            上個月
-          </button>
-          <button type="button" class="calendar-today-button" @click="goToCurrentMonth">
-            今天
-          </button>
-          <button type="button" class="calendar-nav-button" @click="goToNextMonth">
-            下個月
-          </button>
+          <button type="button" class="calendar-nav-button" @click="goToPreviousMonth">上個月</button>
+          <button type="button" class="calendar-today-button" @click="goToCurrentMonth">今天</button>
+          <button type="button" class="calendar-nav-button" @click="goToNextMonth">下個月</button>
         </div>
 
         <div class="calendar-toolbar">
           <div class="staff-legend" aria-label="員工顏色列表">
             <div v-for="staff in staffList" :key="staff.eid" class="staff-legend-item">
-              <span
-                class="staff-legend-dot"
-                :style="{ backgroundColor: staffColor(staff.eid) }"
-              ></span>
-              <span class="staff-legend-name">
-                {{ staff.alias || staff.name || staff.employee_id }}
-              </span>
+              <span class="staff-legend-dot" :style="{ backgroundColor: staffColor(staff.eid) }"></span>
+              <span class="staff-legend-name">{{ staff.alias || staff.name || staff.employee_id }}</span>
             </div>
           </div>
 
-          <button type="button" class="calendar-add-button" @click="openCreateDialog()">
-            新增班表
-          </button>
+          <button type="button" class="calendar-add-button" @click="openCreateDialog()">新增班表</button>
         </div>
       </div>
     </header>
@@ -56,12 +43,7 @@
 
       <template v-else>
         <div class="calendar-weekdays" role="row">
-          <div
-            v-for="weekday in weekdays"
-            :key="weekday"
-            class="calendar-weekday"
-            role="columnheader"
-          >
+          <div v-for="weekday in weekdays" :key="weekday" class="calendar-weekday" role="columnheader">
             {{ weekday }}
           </div>
         </div>
@@ -78,12 +60,7 @@
           >
             <div class="calendar-cell-top">
               <span class="calendar-day-number">{{ day.date.getDate() }}</span>
-              <button
-                v-if="day.isCurrentMonth"
-                type="button"
-                class="calendar-cell-add"
-                @click="openCreateDialog(day.date)"
-              >
+              <button v-if="day.isCurrentMonth" type="button" class="calendar-cell-add" @click="openCreateDialog(day.date)">
                 +
               </button>
             </div>
@@ -99,12 +76,8 @@
                 @click="openDetailDialog(shift)"
               >
                 <span class="calendar-shift-content">
-                  <span class="calendar-shift-time">
-                    {{ shift.start_time }} - {{ shift.end_time }}
-                  </span>
-                  <span class="calendar-shift-title">
-                    {{ shift.staff_alias || shift.staff_name || shift.employee_id }}
-                  </span>
+                  <span class="calendar-shift-time">{{ shift.start_time }} - {{ shift.end_time }}</span>
+                  <span class="calendar-shift-title">{{ shift.staff_alias || shift.staff_name || shift.employee_id }}</span>
                 </span>
               </button>
             </div>
@@ -113,20 +86,14 @@
       </template>
     </section>
 
-    <div
-      v-if="isCreateDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeCreateDialog"
-    >
+    <div v-if="isCreateDialogOpen" class="dialog-overlay" @click.self="closeCreateDialog">
       <section class="dialog-card" aria-label="新增班表">
         <div class="dialog-header">
           <div>
             <p class="dialog-kicker">Create Schedule</p>
             <h3>新增班表</h3>
           </div>
-          <button type="button" class="dialog-close-button" @click="closeCreateDialog">
-            X
-          </button>
+          <button type="button" class="dialog-close-button" @click="closeCreateDialog">X</button>
         </div>
 
         <form class="schedule-form" @submit.prevent="submitSchedule">
@@ -146,15 +113,87 @@
           </label>
 
           <div class="form-row">
-            <label class="form-field">
+            <div class="form-field">
               <span>上班時間</span>
-              <input v-model="scheduleForm.start_time" type="time" required>
-            </label>
+              <div class="time-select-group">
+                <div class="time-dropdown">
+                  <button type="button" class="time-dropdown-trigger" @click="toggleTimeDropdown('start_hour')">
+                    {{ scheduleForm.start_hour }}
+                  </button>
+                  <div v-if="openTimeDropdown === 'start_hour'" class="time-dropdown-menu">
+                    <button
+                      v-for="hour in hourOptions"
+                      :key="`start-hour-${hour.value}`"
+                      type="button"
+                      class="time-dropdown-option"
+                      :class="{ 'time-dropdown-option--active': scheduleForm.start_hour === hour.value }"
+                      @click="selectTimeValue('start_hour', hour.value)"
+                    >
+                      {{ hour.label }}
+                    </button>
+                  </div>
+                </div>
 
-            <label class="form-field">
+                <div class="time-dropdown">
+                  <button type="button" class="time-dropdown-trigger" @click="toggleTimeDropdown('start_minute')">
+                    {{ scheduleForm.start_minute }}
+                  </button>
+                  <div v-if="openTimeDropdown === 'start_minute'" class="time-dropdown-menu">
+                    <button
+                      v-for="minute in minuteOptions"
+                      :key="`start-minute-${minute}`"
+                      type="button"
+                      class="time-dropdown-option"
+                      :class="{ 'time-dropdown-option--active': scheduleForm.start_minute === minute }"
+                      @click="selectTimeValue('start_minute', minute)"
+                    >
+                      {{ minute }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field">
               <span>下班時間</span>
-              <input v-model="scheduleForm.end_time" type="time" required>
-            </label>
+              <div class="time-select-group">
+                <div class="time-dropdown">
+                  <button type="button" class="time-dropdown-trigger" @click="toggleTimeDropdown('end_hour')">
+                    {{ scheduleForm.end_hour }}
+                  </button>
+                  <div v-if="openTimeDropdown === 'end_hour'" class="time-dropdown-menu">
+                    <button
+                      v-for="hour in hourOptions"
+                      :key="`end-hour-${hour.value}`"
+                      type="button"
+                      class="time-dropdown-option"
+                      :class="{ 'time-dropdown-option--active': scheduleForm.end_hour === hour.value }"
+                      @click="selectTimeValue('end_hour', hour.value)"
+                    >
+                      {{ hour.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <div class="time-dropdown">
+                  <button type="button" class="time-dropdown-trigger" @click="toggleTimeDropdown('end_minute')">
+                    {{ scheduleForm.end_minute }}
+                  </button>
+                  <div v-if="openTimeDropdown === 'end_minute'" class="time-dropdown-menu">
+                    <button
+                      v-for="minute in minuteOptions"
+                      :key="`end-minute-${minute}`"
+                      type="button"
+                      class="time-dropdown-option"
+                      :class="{ 'time-dropdown-option--active': scheduleForm.end_minute === minute }"
+                      @click="selectTimeValue('end_minute', minute)"
+                    >
+                      {{ minute }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <label class="form-field">
@@ -167,19 +206,13 @@
 
           <label class="form-field">
             <span>備註</span>
-            <textarea
-              v-model.trim="scheduleForm.note"
-              rows="3"
-              placeholder="可選填備註內容"
-            ></textarea>
+            <textarea v-model.trim="scheduleForm.note" rows="3" placeholder="可選填備註內容"></textarea>
           </label>
 
           <p v-if="formErrorMessage" class="error-message">{{ formErrorMessage }}</p>
 
           <div class="dialog-actions">
-            <button type="button" class="secondary-button" @click="closeCreateDialog">
-              取消
-            </button>
+            <button type="button" class="secondary-button" @click="closeCreateDialog">取消</button>
             <button type="submit" class="primary-button" :disabled="isSaving">
               {{ isSaving ? '儲存中...' : '儲存班表' }}
             </button>
@@ -188,20 +221,14 @@
       </section>
     </div>
 
-    <div
-      v-if="isDetailDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeDetailDialog"
-    >
+    <div v-if="isDetailDialogOpen" class="dialog-overlay" @click.self="closeDetailDialog">
       <section class="detail-dialog-card" aria-label="班表詳細資訊">
         <div class="dialog-header">
           <div>
             <p class="dialog-kicker">Schedule Detail</p>
             <h3>班表詳細資訊</h3>
           </div>
-          <button type="button" class="dialog-close-button" @click="closeDetailDialog">
-            X
-          </button>
+          <button type="button" class="dialog-close-button" @click="closeDetailDialog">X</button>
         </div>
 
         <p v-if="isLoadingDetail" class="info-message">讀取詳細資訊中...</p>
@@ -210,25 +237,18 @@
         <dl v-else-if="selectedSchedule" class="detail-list">
           <dt>員工</dt>
           <dd>{{ selectedSchedule.staff_alias || selectedSchedule.staff_name || selectedSchedule.employee_id }}</dd>
-
           <dt>上班日期</dt>
           <dd>{{ formatDateDisplay(selectedSchedule.work_date) }}</dd>
-
           <dt>上班時間</dt>
           <dd>{{ selectedSchedule.start_time }}</dd>
-
           <dt>下班時間</dt>
           <dd>{{ selectedSchedule.end_time }}</dd>
-
           <dt>啟用狀態</dt>
           <dd>{{ activeStatusText(selectedSchedule.is_active) }}</dd>
-
           <dt>建立人員</dt>
           <dd>{{ createdByText(selectedSchedule) }}</dd>
-
           <dt>備註</dt>
           <dd>{{ selectedSchedule.note || '無' }}</dd>
-
           <dt>最後更新時間</dt>
           <dd>{{ formatDateTimeDisplay(selectedSchedule.updated_at) }}</dd>
         </dl>
@@ -266,6 +286,7 @@ export default {
       isLoading: false,
       errorMessage: '',
       isCreateDialogOpen: false,
+      openTimeDropdown: '',
       isSaving: false,
       formErrorMessage: '',
       isDetailDialogOpen: false,
@@ -277,16 +298,21 @@ export default {
   },
   computed: {
     currentMonthLabel() {
-      const year = this.currentDate.getFullYear()
-      const month = this.currentDate.getMonth() + 1
-
-      return `${year}年${month}月`
+      return `${this.currentDate.getFullYear()}年${this.currentDate.getMonth() + 1}月`
     },
     currentMonthKey() {
       const year = this.currentDate.getFullYear()
       const month = String(this.currentDate.getMonth() + 1).padStart(2, '0')
-
       return `${year}-${month}`
+    },
+    hourOptions() {
+      return Array.from({ length: 24 }, (_, hour) => ({
+        value: String(hour).padStart(2, '0'),
+        label: String(hour).padStart(2, '0'),
+      }))
+    },
+    minuteOptions() {
+      return Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, '0'))
     },
     calendarDays() {
       const firstDay = this.startOfMonth(this.currentDate)
@@ -296,7 +322,6 @@ export default {
       return Array.from({ length: 42 }, (_, index) => {
         const date = new Date(gridStart)
         date.setDate(gridStart.getDate() + index)
-
         return {
           key: this.formatDateKey(date),
           date,
@@ -308,21 +333,14 @@ export default {
     visibleRangeLabel() {
       const firstVisibleDay = this.calendarDays[0]?.date
       const lastVisibleDay = this.calendarDays[this.calendarDays.length - 1]?.date
-
-      if (!firstVisibleDay || !lastVisibleDay) {
-        return ''
-      }
-
-      return `${this.formatShortDate(firstVisibleDay)} - ${this.formatShortDate(lastVisibleDay)}`
+      return firstVisibleDay && lastVisibleDay
+        ? `${this.formatShortDate(firstVisibleDay)} - ${this.formatShortDate(lastVisibleDay)}`
+        : ''
     },
     schedulesByDate() {
       return this.schedules.reduce((grouped, item) => {
         const key = this.normalizeDateKey(item.work_date)
-
-        if (!grouped[key]) {
-          grouped[key] = []
-        }
-
+        if (!grouped[key]) grouped[key] = []
         grouped[key].push(item)
         return grouped
       }, {})
@@ -335,22 +353,39 @@ export default {
   },
   mounted() {
     this.initializePage()
+    document.addEventListener('click', this.handleDocumentClick)
+  },
+  beforeUnmount() {
+    document.removeEventListener('click', this.handleDocumentClick)
   },
   methods: {
     createEmptyForm(date = '') {
       return {
         staff_id: '',
         work_date: date,
-        start_time: '09:00',
-        end_time: '18:00',
+        start_hour: '09',
+        start_minute: '00',
+        end_hour: '18',
+        end_minute: '00',
         is_active: '1',
         note: '',
       }
     },
+    handleDocumentClick(event) {
+      if (!event.target.closest('.time-dropdown')) {
+        this.openTimeDropdown = ''
+      }
+    },
+    toggleTimeDropdown(key) {
+      this.openTimeDropdown = this.openTimeDropdown === key ? '' : key
+    },
+    selectTimeValue(field, value) {
+      this.scheduleForm[field] = value
+      this.openTimeDropdown = ''
+    },
     async initializePage() {
       this.isLoading = true
       this.errorMessage = ''
-
       try {
         await Promise.all([this.fetchStaffList(), this.fetchSchedules()])
       } catch (error) {
@@ -391,11 +426,15 @@ export default {
     },
     openCreateDialog(date = null) {
       this.formErrorMessage = ''
+      this.openTimeDropdown = ''
       this.scheduleForm = this.createEmptyForm(date ? this.formatDateKey(date) : '')
+      this.applyTimeParts('start', '09:00')
+      this.applyTimeParts('end', '18:00')
       this.isCreateDialogOpen = true
     },
     closeCreateDialog() {
       this.isCreateDialogOpen = false
+      this.openTimeDropdown = ''
       this.formErrorMessage = ''
       this.scheduleForm = this.createEmptyForm()
     },
@@ -405,7 +444,10 @@ export default {
         return
       }
 
-      if (this.scheduleForm.start_time >= this.scheduleForm.end_time) {
+      const startTime = this.buildTimeValue('start')
+      const endTime = this.buildTimeValue('end')
+
+      if (startTime >= endTime) {
         this.formErrorMessage = '上班時間必須早於下班時間。'
         return
       }
@@ -413,16 +455,15 @@ export default {
       this.isSaving = true
       this.formErrorMessage = ''
 
-      const auth = getStoredAuth()
-
       try {
+        const auth = getStoredAuth()
         const targetWorkDate = this.scheduleForm.work_date
 
         await axios.post('/api/staff_schedule', {
           staff_id: Number(this.scheduleForm.staff_id),
           work_date: targetWorkDate,
-          start_time: this.scheduleForm.start_time,
-          end_time: this.scheduleForm.end_time,
+          start_time: startTime,
+          end_time: endTime,
           is_active: Number(this.scheduleForm.is_active),
           note: this.scheduleForm.note || null,
           created_by: auth?.eid ?? null,
@@ -432,7 +473,6 @@ export default {
 
         const [year, month] = targetWorkDate.split('-')
         const targetMonth = `${year}-${month}`
-
         if (targetMonth !== this.currentMonthKey) {
           this.currentDate = new Date(Number(year), Number(month) - 1, 1)
         } else {
@@ -450,7 +490,6 @@ export default {
       this.detailErrorMessage = ''
       this.isLoadingDetail = true
       this.isDetailDialogOpen = true
-
       try {
         const response = await axios.get(`/api/staff_schedule/${shift.schedule_id}`)
         this.selectedSchedule = response.data
@@ -467,6 +506,15 @@ export default {
       this.detailErrorMessage = ''
       this.selectedSchedule = null
     },
+    buildTimeValue(prefix) {
+      const hour = Number(this.scheduleForm[`${prefix}_hour`])
+      return `${String(hour).padStart(2, '0')}:${this.scheduleForm[`${prefix}_minute`]}`
+    },
+    applyTimeParts(prefix, timeValue) {
+      const [hourText = '00', minuteText = '00'] = String(timeValue).split(':')
+      this.scheduleForm[`${prefix}_hour`] = String(Number(hourText)).padStart(2, '0')
+      this.scheduleForm[`${prefix}_minute`] = minuteText
+    },
     isSameDate(left, right) {
       return left.getFullYear() === right.getFullYear()
         && left.getMonth() === right.getMonth()
@@ -476,18 +524,11 @@ export default {
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
-
       return `${year}-${month}-${day}`
     },
     normalizeDateKey(value) {
-      if (!value) {
-        return ''
-      }
-
-      if (value instanceof Date) {
-        return this.formatDateKey(value)
-      }
-
+      if (!value) return ''
+      if (value instanceof Date) return this.formatDateKey(value)
       return String(value).slice(0, 10)
     },
     formatShortDate(date) {
@@ -495,52 +536,35 @@ export default {
     },
     formatDateDisplay(value) {
       const dateText = this.normalizeDateKey(value)
-
-      if (!dateText) {
-        return ''
-      }
-
+      if (!dateText) return ''
       const [year, month, day] = dateText.split('-')
       return `${year}年${Number(month)}月${Number(day)}日`
     },
     formatDateTimeDisplay(value) {
-      if (!value) {
-        return ''
-      }
-
+      if (!value) return ''
       const date = new Date(value)
-
-      if (Number.isNaN(date.getTime())) {
-        return String(value)
-      }
-
+      if (Number.isNaN(date.getTime())) return String(value)
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
       const hours = String(date.getHours()).padStart(2, '0')
       const minutes = String(date.getMinutes()).padStart(2, '0')
-
       return `${year}-${month}-${day} ${hours}:${minutes}`
     },
     activeStatusText(value) {
       return Number(value) === 1 ? '啟用' : '停用'
     },
     createdByText(schedule) {
-      if (!schedule?.created_by) {
-        return '系統'
-      }
-
+      if (!schedule?.created_by) return '系統'
       return schedule.created_by_alias || schedule.created_by_name || String(schedule.created_by)
     },
     staffColor(staffId) {
       const index = this.staffList.findIndex((staff) => Number(staff.eid) === Number(staffId))
       const safeIndex = index >= 0 ? index : Number(staffId) || 0
-
       return STAFF_COLORS[safeIndex % STAFF_COLORS.length]
     },
     shiftStyle(shift) {
       const color = this.staffColor(shift.staff_id)
-
       return {
         borderLeftColor: color,
         backgroundColor: `${color}18`,
@@ -833,7 +857,7 @@ export default {
 .detail-dialog-card {
   width: min(560px, 100%);
   max-height: calc(100vh - 48px);
-  overflow-y: auto;
+  overflow: visible;
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 24px 48px rgba(32, 52, 74, 0.18);
@@ -864,7 +888,10 @@ export default {
 .schedule-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .form-row {
@@ -898,10 +925,63 @@ export default {
   resize: vertical;
 }
 
+.time-select-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.time-dropdown {
+  position: relative;
+}
+
+.time-dropdown-trigger {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #d6dde7;
+  border-radius: 14px;
+  background: #f8fbfe;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.time-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid #d6dde7;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 16px 32px rgba(32, 52, 74, 0.14);
+  padding: 6px;
+}
+
+.time-dropdown-option {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.time-dropdown-option:hover,
+.time-dropdown-option--active {
+  background: #eef5ff;
+  color: #1f7ae0;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  padding-bottom: 6px;
 }
 
 .detail-list {
@@ -910,6 +990,8 @@ export default {
   margin: 0;
   border: 1px solid #e7edf3;
   border-bottom: 0;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
 }
 
 .detail-list dt,
@@ -994,7 +1076,8 @@ export default {
     font-size: 28px;
   }
 
-  .form-row {
+  .form-row,
+  .time-select-group {
     grid-template-columns: 1fr;
   }
 
