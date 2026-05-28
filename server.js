@@ -150,7 +150,7 @@ app.get('/api/staff_schedule', async (req, res) => {
         s.name AS staff_name,
         s.alias AS staff_alias,
         s.employee_id,
-        ss.work_date,
+        DATE_FORMAT(ss.work_date, '%Y-%m-%d') AS work_date,
         TIME_FORMAT(ss.start_time, '%H:%i') AS start_time,
         TIME_FORMAT(ss.end_time, '%H:%i') AS end_time,
         ss.schedule_type,
@@ -196,7 +196,7 @@ app.get('/api/staff_schedule/:scheduleId', async (req, res) => {
         s.name AS staff_name,
         s.alias AS staff_alias,
         s.employee_id,
-        ss.work_date,
+        DATE_FORMAT(ss.work_date, '%Y-%m-%d') AS work_date,
         TIME_FORMAT(ss.start_time, '%H:%i') AS start_time,
         TIME_FORMAT(ss.end_time, '%H:%i') AS end_time,
         ss.schedule_type,
@@ -294,7 +294,7 @@ app.post('/api/staff_schedule', async (req, res) => {
         is_active,
         note,
         created_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, STR_TO_DATE(?, '%Y-%m-%d'), ?, ?, ?, ?, ?, ?)`,
       [staffId, workDate, startTime, endTime, scheduleType, isActive, note, createdBy]
     );
 

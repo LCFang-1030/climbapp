@@ -528,8 +528,25 @@ export default {
     },
     normalizeDateKey(value) {
       if (!value) return ''
-      if (value instanceof Date) return this.formatDateKey(value)
-      return String(value).slice(0, 10)
+
+      if (value instanceof Date) {
+        return this.formatDateKey(value)
+      }
+
+      const rawValue = String(value).trim()
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
+        return rawValue
+      }
+
+      const parsedDate = new Date(rawValue)
+
+      if (!Number.isNaN(parsedDate.getTime())) {
+        return this.formatDateKey(parsedDate)
+      }
+
+      const matchedDate = rawValue.match(/\d{4}-\d{2}-\d{2}/)
+      return matchedDate ? matchedDate[0] : rawValue.slice(0, 10)
     },
     formatShortDate(date) {
       return `${date.getMonth() + 1}/${date.getDate()}`
