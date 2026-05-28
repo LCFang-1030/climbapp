@@ -154,7 +154,7 @@
               <td colspan="6" class="results-empty-cell">
                 <span v-if="!hasSearched && !isLoadingMembers">請輸入搜尋條件後查詢會員資料。</span>
                 <span v-else-if="isLoadingMembers">正在載入會員資料...</span>
-                <span v-else>查無符合條件的會員資料。</span>
+                <span v-else class="results-empty-highlight">查無符合條件的會員資料。</span>
               </td>
             </tr>
           </tbody>
@@ -845,6 +845,11 @@ export default {
   text-align: center !important;
   line-height: 1.7;
   padding: 28px 16px !important;
+}
+
+.results-empty-highlight {
+  color: var(--accent-strong);
+  font-weight: 700;
 }
 
 .member-dialog-overlay {
