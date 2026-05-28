@@ -90,7 +90,7 @@
 
       <div class="search-actions">
         <div class="search-hint">
-          `訂單編號`、`發票狀態`、`發票號碼` 目前僅建立前端欄位，尚未串接資料庫。
+          `訂單編號`、`發票狀態`、`發票號碼` 目前先使用前端占位資料，等資料表建立後可直接改成實際查詢。
         </div>
         <div class="search-button-group">
           <button
@@ -159,9 +159,9 @@
           <tbody v-else>
             <tr>
               <td colspan="6" class="results-empty-cell">
-                <span v-if="!hasSearched && !isLoadingVisits">請先輸入條件後搜尋交易紀錄。</span>
+                <span v-if="!hasSearched && !isLoadingVisits">請先輸入搜尋條件後查詢交易紀錄。</span>
                 <span v-else-if="isLoadingVisits">正在整理交易紀錄資料...</span>
-                <span v-else>查無符合條件的交易紀錄。</span>
+                <span v-else class="results-no-data">查無符合條件的交易紀錄。</span>
               </td>
             </tr>
           </tbody>
@@ -233,9 +233,7 @@
           <section class="detail-section">
             <div class="detail-section-header">
               <h3>租借</h3>
-              <span class="detail-price">
-                ${{ formatCurrency(selectedOrderVisit.rentalAmount) }}
-              </span>
+              <span class="detail-price">${{ formatCurrency(selectedOrderVisit.rentalAmount) }}</span>
             </div>
             <p v-if="selectedOrderVisit.rentalsLoading" class="detail-empty">正在載入租借內容...</p>
             <p v-else-if="selectedOrderVisit.rentalsError" class="detail-empty is-error">
@@ -278,9 +276,7 @@ const createFilters = () => ({
 })
 
 const normalizeText = (value) => String(value ?? '').trim().toLowerCase()
-
 const normalizeDigits = (value) => String(value ?? '').replace(/\D/g, '')
-
 const createDisplayOrderNumber = (visit) =>
   `OD${String(visit.visit_id ?? '').padStart(8, '0')}`
 
@@ -308,6 +304,7 @@ export default {
       datetime: '',
       clockTimer: null,
       filters: createFilters(),
+      appliedFilters: createFilters(),
       visits: [],
       ticketOptions: [],
       hasLoadedVisits: false,
@@ -322,11 +319,11 @@ export default {
 
   computed: {
     filteredVisitRecords() {
-      if (!this.hasAnyFilter) {
+      if (!this.hasSearched || !this.hasAnyAppliedFilter) {
         return []
       }
 
-      return this.visits.filter((visit) => this.matchesFilters(visit))
+      return this.visits.filter((visit) => this.matchesFilters(visit, this.appliedFilters))
     },
 
     hasAnyFilter() {
@@ -339,6 +336,19 @@ export default {
         || this.filters.productName
         || this.filters.startDate
         || this.filters.endDate
+      )
+    },
+
+    hasAnyAppliedFilter() {
+      return Boolean(
+        this.appliedFilters.phone
+        || this.appliedFilters.orderNumber
+        || this.appliedFilters.invoiceStatus
+        || this.appliedFilters.invoiceNumber
+        || this.appliedFilters.productCode
+        || this.appliedFilters.productName
+        || this.appliedFilters.startDate
+        || this.appliedFilters.endDate
       )
     },
 
@@ -363,7 +373,7 @@ export default {
         await Promise.all([this.fetchTickets(), this.fetchAllVisits()])
         this.hasLoadedVisits = true
       } catch (err) {
-        console.error('預載交易紀錄失敗', err)
+        console.error('載入交易紀錄失敗', err)
         this.searchMessage = '載入交易紀錄失敗'
         this.searchMessageType = 'error'
       } finally {
@@ -372,31 +382,32 @@ export default {
     },
 
     async submitSearch() {
-      this.hasSearched = this.hasAnyFilter
+      this.hasSearched = true
       this.searchMessage = ''
       this.searchMessageType = ''
 
       if (!this.hasAnyFilter) {
-        this.searchMessage = '請至少輸入一個查詢條件。'
+        this.searchMessage = '請至少輸入一個搜尋條件。'
         this.searchMessageType = 'error'
         return
       }
 
       if (this.filters.startDate && this.filters.endDate && this.filters.startDate > this.filters.endDate) {
-        this.searchMessage = '入場時間的開始日期不能晚於結束日期。'
+        this.searchMessage = '入場開始日期不可晚於結束日期。'
         this.searchMessageType = 'error'
         return
       }
 
       try {
         await this.preloadSearchData()
+        this.appliedFilters = { ...this.filters }
 
         if (
-          this.filters.orderNumber
-          || this.filters.invoiceStatus
-          || this.filters.invoiceNumber
+          this.appliedFilters.orderNumber
+          || this.appliedFilters.invoiceStatus
+          || this.appliedFilters.invoiceNumber
         ) {
-          this.searchMessage = '訂單編號、發票狀態、發票號碼目前僅建立前端欄位，尚未納入實際搜尋。'
+          this.searchMessage = '訂單編號、發票狀態、發票號碼目前先使用前端占位資料搜尋。'
           this.searchMessageType = 'info'
         }
       } catch (err) {
@@ -408,6 +419,7 @@ export default {
 
     resetFilters() {
       this.filters = createFilters()
+      this.appliedFilters = createFilters()
       this.hasSearched = false
       this.searchMessage = ''
       this.searchMessageType = ''
@@ -469,37 +481,37 @@ export default {
       return Array.isArray(res.data) ? res.data : []
     },
 
-    matchesFilters(visit) {
-      if (this.filters.phone) {
-        const keyword = normalizeDigits(this.filters.phone)
+    matchesFilters(visit, filters) {
+      if (filters.phone) {
+        const keyword = normalizeDigits(filters.phone)
         const target = normalizeDigits(visit.phone)
         if (!target.includes(keyword)) {
           return false
         }
       }
 
-      if (this.filters.orderNumber) {
-        const keyword = normalizeText(this.filters.orderNumber)
+      if (filters.orderNumber) {
+        const keyword = normalizeText(filters.orderNumber)
         if (!normalizeText(visit.displayOrderNumber).includes(keyword)) {
           return false
         }
       }
 
-      if (this.filters.invoiceStatus) {
-        if (normalizeText(visit.displayInvoiceStatus) !== normalizeText(this.filters.invoiceStatus)) {
+      if (filters.invoiceStatus) {
+        if (normalizeText(visit.displayInvoiceStatus) !== normalizeText(filters.invoiceStatus)) {
           return false
         }
       }
 
-      if (this.filters.invoiceNumber) {
-        const keyword = normalizeText(this.filters.invoiceNumber)
+      if (filters.invoiceNumber) {
+        const keyword = normalizeText(filters.invoiceNumber)
         if (!normalizeText(visit.displayInvoiceNumber).includes(keyword)) {
           return false
         }
       }
 
-      if (this.filters.productCode) {
-        const keyword = normalizeText(this.filters.productCode)
+      if (filters.productCode) {
+        const keyword = normalizeText(filters.productCode)
         const ticketCode = normalizeText(visit.ticketCode)
         const rentalCodes = visit.rentals.map((rental) => normalizeText(rental.rental_code))
         if (!ticketCode.includes(keyword) && !rentalCodes.some((code) => code.includes(keyword))) {
@@ -507,8 +519,8 @@ export default {
         }
       }
 
-      if (this.filters.productName) {
-        const keyword = normalizeText(this.filters.productName)
+      if (filters.productName) {
+        const keyword = normalizeText(filters.productName)
         const ticketName = normalizeText(visit.ticketName)
         const rentalNames = visit.rentals.map((rental) => normalizeText(rental.rental_name))
         if (!ticketName.includes(keyword) && !rentalNames.some((name) => name.includes(keyword))) {
@@ -516,15 +528,15 @@ export default {
         }
       }
 
-      if (!this.matchesDateRange(visit.checkin_time)) {
+      if (!this.matchesDateRange(visit.checkin_time, filters)) {
         return false
       }
 
       return true
     },
 
-    matchesDateRange(value) {
-      if (!this.filters.startDate && !this.filters.endDate) {
+    matchesDateRange(value, filters) {
+      if (!filters.startDate && !filters.endDate) {
         return true
       }
 
@@ -533,15 +545,15 @@ export default {
         return false
       }
 
-      if (this.filters.startDate) {
-        const startDate = new Date(`${this.filters.startDate}T00:00:00`)
+      if (filters.startDate) {
+        const startDate = new Date(`${filters.startDate}T00:00:00`)
         if (visitDate < startDate) {
           return false
         }
       }
 
-      if (this.filters.endDate) {
-        const endDate = new Date(`${this.filters.endDate}T23:59:59`)
+      if (filters.endDate) {
+        const endDate = new Date(`${filters.endDate}T23:59:59`)
         if (visitDate > endDate) {
           return false
         }
@@ -576,40 +588,6 @@ export default {
     closeOrderDialog() {
       this.isOrderDialogOpen = false
       this.selectedOrderVisit = null
-    },
-  },
-
-  watch: {
-    filters: {
-      async handler() {
-        this.hasSearched = this.hasAnyFilter
-        this.searchMessage = ''
-        this.searchMessageType = ''
-
-        if (!this.hasAnyFilter) {
-          return
-        }
-
-        if (this.filters.startDate && this.filters.endDate && this.filters.startDate > this.filters.endDate) {
-          this.searchMessage = '入場時間的開始日期不能晚於結束日期。'
-          this.searchMessageType = 'error'
-          return
-        }
-
-        if (
-          this.filters.orderNumber
-          || this.filters.invoiceStatus
-          || this.filters.invoiceNumber
-        ) {
-          this.searchMessage = '訂單編號、發票狀態、發票號碼目前先用前端占位資料做快速搜尋。'
-          this.searchMessageType = 'info'
-        }
-
-        if (!this.hasLoadedVisits) {
-          await this.preloadSearchData()
-        }
-      },
-      deep: true,
     },
   },
 }
@@ -811,17 +789,16 @@ export default {
   color: var(--text-soft);
 }
 
-.results-empty {
-  color: var(--text-soft);
-  line-height: 1.7;
-  padding: 18px 0 6px;
-}
-
 .results-empty-cell {
   color: var(--text-soft);
   text-align: center !important;
   line-height: 1.7;
   padding: 28px 16px !important;
+}
+
+.results-no-data {
+  color: #c35a2f;
+  font-weight: 700;
 }
 
 .results-table-shell {
