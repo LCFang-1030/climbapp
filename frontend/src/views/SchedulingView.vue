@@ -17,11 +17,17 @@
         </div>
 
         <div class="calendar-toolbar">
-          <div class="staff-legend" aria-label="員工顏色列表">
-            <div v-for="staff in staffList" :key="staff.eid" class="staff-legend-item">
+          <div class="staff-legend" aria-label="員工顯示控制">
+            <button
+              v-for="staff in staffList"
+              :key="staff.eid"
+              type="button"
+              :class="['staff-legend-item', { 'staff-legend-item--inactive': !isStaffVisible(staff.eid) }]"
+              @click="toggleStaffVisibility(staff.eid)"
+            >
               <span class="staff-legend-dot" :style="{ backgroundColor: staffColor(staff.eid) }"></span>
               <span class="staff-legend-name">{{ staff.alias || staff.name || staff.employee_id }}</span>
-            </div>
+            </button>
           </div>
 
           <button type="button" class="calendar-add-button" @click="openCreateDialog()">新增班表</button>
@@ -43,7 +49,12 @@
 
       <template v-else>
         <div class="calendar-weekdays" role="row">
-          <div v-for="weekday in weekdays" :key="weekday" class="calendar-weekday" role="columnheader">
+          <div
+            v-for="weekday in weekdays"
+            :key="weekday"
+            class="calendar-weekday"
+            role="columnheader"
+          >
             {{ weekday }}
           </div>
         </div>
@@ -60,7 +71,12 @@
           >
             <div class="calendar-cell-top">
               <span class="calendar-day-number">{{ day.date.getDate() }}</span>
-              <button v-if="day.isCurrentMonth" type="button" class="calendar-cell-add" @click="openCreateDialog(day.date)">
+              <button
+                v-if="day.isCurrentMonth"
+                type="button"
+                class="calendar-cell-add"
+                @click="openCreateDialog(day.date)"
+              >
                 +
               </button>
             </div>
@@ -77,7 +93,9 @@
               >
                 <span class="calendar-shift-content">
                   <span class="calendar-shift-time">{{ shift.start_time }} - {{ shift.end_time }}</span>
-                  <span class="calendar-shift-title">{{ shift.staff_alias || shift.staff_name || shift.employee_id }}</span>
+                  <span class="calendar-shift-title">
+                    {{ shift.staff_alias || shift.staff_name || shift.employee_id }}
+                  </span>
                 </span>
               </button>
             </div>
@@ -283,6 +301,7 @@ export default {
       currentDate: this.startOfMonth(new Date()),
       staffList: [],
       schedules: [],
+      visibleStaffIds: [],
       isLoading: false,
       errorMessage: '',
       isCreateDialogOpen: false,
@@ -333,14 +352,22 @@ export default {
     visibleRangeLabel() {
       const firstVisibleDay = this.calendarDays[0]?.date
       const lastVisibleDay = this.calendarDays[this.calendarDays.length - 1]?.date
+
       return firstVisibleDay && lastVisibleDay
         ? `${this.formatShortDate(firstVisibleDay)} - ${this.formatShortDate(lastVisibleDay)}`
         : ''
     },
     schedulesByDate() {
       return this.schedules.reduce((grouped, item) => {
+        if (!this.isStaffVisible(item.staff_id)) {
+          return grouped
+        }
+
         const key = this.normalizeDateKey(item.work_date)
-        if (!grouped[key]) grouped[key] = []
+        if (!grouped[key]) {
+          grouped[key] = []
+        }
+
         grouped[key].push(item)
         return grouped
       }, {})
@@ -383,9 +410,38 @@ export default {
       this.scheduleForm[field] = value
       this.openTimeDropdown = ''
     },
+    syncVisibleStaffIds() {
+      const nextIds = this.staffList.map((staff) => Number(staff.eid))
+
+      if (!this.visibleStaffIds.length) {
+        this.visibleStaffIds = [...nextIds]
+        return
+      }
+
+      const currentVisible = new Set(this.visibleStaffIds.map((id) => Number(id)))
+      this.visibleStaffIds = nextIds.filter((id) => currentVisible.has(id))
+
+      if (!this.visibleStaffIds.length) {
+        this.visibleStaffIds = [...nextIds]
+      }
+    },
+    isStaffVisible(staffId) {
+      return this.visibleStaffIds.includes(Number(staffId))
+    },
+    toggleStaffVisibility(staffId) {
+      const normalizedId = Number(staffId)
+
+      if (this.isStaffVisible(normalizedId)) {
+        this.visibleStaffIds = this.visibleStaffIds.filter((id) => Number(id) !== normalizedId)
+        return
+      }
+
+      this.visibleStaffIds = [...this.visibleStaffIds, normalizedId]
+    },
     async initializePage() {
       this.isLoading = true
       this.errorMessage = ''
+
       try {
         await Promise.all([this.fetchStaffList(), this.fetchSchedules()])
       } catch (error) {
@@ -398,6 +454,7 @@ export default {
     async fetchStaffList() {
       const response = await axios.get('/api/staff')
       this.staffList = Array.isArray(response.data) ? response.data : []
+      this.syncVisibleStaffIds()
     },
     async fetchSchedules() {
       try {
@@ -473,6 +530,7 @@ export default {
 
         const [year, month] = targetWorkDate.split('-')
         const targetMonth = `${year}-${month}`
+
         if (targetMonth !== this.currentMonthKey) {
           this.currentDate = new Date(Number(year), Number(month) - 1, 1)
         } else {
@@ -490,6 +548,7 @@ export default {
       this.detailErrorMessage = ''
       this.isLoadingDetail = true
       this.isDetailDialogOpen = true
+
       try {
         const response = await axios.get(`/api/staff_schedule/${shift.schedule_id}`)
         this.selectedSchedule = response.data
@@ -527,7 +586,9 @@ export default {
       return `${year}-${month}-${day}`
     },
     normalizeDateKey(value) {
-      if (!value) return ''
+      if (!value) {
+        return ''
+      }
 
       if (value instanceof Date) {
         return this.formatDateKey(value)
@@ -540,7 +601,6 @@ export default {
       }
 
       const parsedDate = new Date(rawValue)
-
       if (!Number.isNaN(parsedDate.getTime())) {
         return this.formatDateKey(parsedDate)
       }
@@ -553,14 +613,23 @@ export default {
     },
     formatDateDisplay(value) {
       const dateText = this.normalizeDateKey(value)
-      if (!dateText) return ''
+      if (!dateText) {
+        return ''
+      }
+
       const [year, month, day] = dateText.split('-')
       return `${year}年${Number(month)}月${Number(day)}日`
     },
     formatDateTimeDisplay(value) {
-      if (!value) return ''
+      if (!value) {
+        return ''
+      }
+
       const date = new Date(value)
-      if (Number.isNaN(date.getTime())) return String(value)
+      if (Number.isNaN(date.getTime())) {
+        return String(value)
+      }
+
       const year = date.getFullYear()
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
@@ -572,7 +641,10 @@ export default {
       return Number(value) === 1 ? '啟用' : '停用'
     },
     createdByText(schedule) {
-      if (!schedule?.created_by) return '系統'
+      if (!schedule?.created_by) {
+        return '系統'
+      }
+
       return schedule.created_by_alias || schedule.created_by_name || String(schedule.created_by)
     },
     staffColor(staffId) {
@@ -675,7 +747,7 @@ export default {
   border-radius: 999px;
   border: 1px solid rgba(32, 52, 74, 0.12);
   cursor: pointer;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease, opacity 0.18s ease;
   font-weight: 700;
 }
 
@@ -718,6 +790,16 @@ export default {
   border-radius: 999px;
   background: rgba(244, 248, 252, 0.92);
   border: 1px solid rgba(32, 52, 74, 0.08);
+  cursor: pointer;
+}
+
+.staff-legend-item:hover {
+  transform: translateY(-1px);
+}
+
+.staff-legend-item--inactive {
+  opacity: 0.4;
+  background: rgba(244, 248, 252, 0.48);
 }
 
 .staff-legend-dot {
