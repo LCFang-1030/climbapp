@@ -18,22 +18,22 @@
     <section class="search-card">
       <div class="search-grid">
         <label class="search-field">
-          <span>會員編號</span>
-          <input
-            v-model.trim="filters.memberCode"
-            type="text"
-            placeholder="請輸入會員編號"
-            @keyup.enter="submitSearch"
-          />
-        </label>
-
-        <label class="search-field">
           <span>手機號碼</span>
           <input
             v-model.trim="filters.phone"
             type="text"
             inputmode="numeric"
             placeholder="請輸入手機號碼"
+            @keyup.enter="submitSearch"
+          />
+        </label>
+
+        <label class="search-field">
+          <span>會員編號</span>
+          <input
+            v-model.trim="filters.memberCode"
+            type="text"
+            placeholder="請輸入會員編號"
             @keyup.enter="submitSearch"
           />
         </label>
