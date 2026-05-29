@@ -17,6 +17,41 @@
 /*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
 
 --
+-- Table structure for table `bulletin_board`
+--
+
+DROP TABLE IF EXISTS `bulletin_board`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `bulletin_board` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT COMMENT '留言板ID',
+  `content` text NOT NULL COMMENT '留言內容',
+  `status` tinyint(3) unsigned NOT NULL DEFAULT 1 COMMENT '留言狀態：1=已發布 2=已完成 3=已取消 4=置頂',
+  `created_by` int(6) unsigned zerofill NOT NULL COMMENT '建立員工 ID',
+  `updated_by` int(6) unsigned DEFAULT NULL COMMENT '最後修改員工 ID',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否顯示：1=顯示 0=隱藏',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '最後更新時間',
+  PRIMARY KEY (`id`),
+  KEY `fk_bulletin_created_staff` (`created_by`),
+  KEY `fk_bulletin_updated_staff` (`updated_by`),
+  CONSTRAINT `fk_bulletin_created_staff` FOREIGN KEY (`created_by`) REFERENCES `staff` (`eid`),
+  CONSTRAINT `fk_bulletin_updated_staff` FOREIGN KEY (`updated_by`) REFERENCES `staff` (`eid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='留言板資料表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `bulletin_board`
+--
+
+LOCK TABLES `bulletin_board` WRITE;
+/*!40000 ALTER TABLE `bulletin_board` DISABLE KEYS */;
+set autocommit=0;
+/*!40000 ALTER TABLE `bulletin_board` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `business_hours`
 --
 
@@ -75,7 +110,7 @@ CREATE TABLE `member_passes` (
   PRIMARY KEY (`pass_id`),
   KEY `member_id` (`member_id`),
   CONSTRAINT `1` FOREIGN KEY (`member_id`) REFERENCES `members` (`member_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -86,7 +121,8 @@ LOCK TABLES `member_passes` WRITE;
 /*!40000 ALTER TABLE `member_passes` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `member_passes` VALUES
-(1,1,'monthly','2026-05-01','2026-05-31',1,'2026-05-14 21:57:02');
+(1,1,'月票','2026-05-01','2026-05-31',1,'2026-05-14 21:57:02'),
+(3,3,'季票','2026-05-01','2026-05-31',1,'2026-05-29 12:11:39');
 /*!40000 ALTER TABLE `member_passes` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -353,7 +389,7 @@ CREATE TABLE `staff_schedule` (
   KEY `idx_work_date` (`work_date`),
   KEY `idx_staff_date` (`staff_id`,`work_date`),
   CONSTRAINT `fk_schedule_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`eid`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -364,7 +400,15 @@ LOCK TABLES `staff_schedule` WRITE;
 /*!40000 ALTER TABLE `staff_schedule` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `staff_schedule` VALUES
-(1,1,'2026-05-30','09:00:00','18:00:00',1,1,NULL,NULL,'2026-05-27 10:11:02','2026-05-27 10:11:02');
+(1,1,'2026-05-30','09:00:00','18:00:00',1,1,NULL,NULL,'2026-05-27 10:11:02','2026-05-27 10:11:02'),
+(2,1,'2026-05-05','14:00:00','18:00:00',1,1,NULL,1,'2026-05-28 11:39:28','2026-05-28 11:39:28'),
+(3,2,'2026-05-04','09:00:00','14:00:00',1,1,NULL,1,'2026-05-28 11:40:07','2026-05-28 11:40:07'),
+(4,3,'2026-05-04','09:00:00','14:00:00',1,1,NULL,1,'2026-05-28 11:46:39','2026-05-28 11:46:39'),
+(5,1,'2026-05-07','09:00:00','18:00:00',1,1,NULL,1,'2026-05-28 15:09:23','2026-05-28 15:09:23'),
+(6,2,'2026-05-07','09:00:00','18:00:00',1,1,NULL,1,'2026-05-28 15:09:33','2026-05-28 15:09:33'),
+(7,1,'2026-05-12','09:00:00','18:00:00',1,1,NULL,1,'2026-05-28 15:14:43','2026-05-28 15:14:43'),
+(8,2,'2026-05-12','09:00:00','12:00:00',1,1,NULL,1,'2026-05-28 15:14:54','2026-05-28 15:14:54'),
+(9,3,'2026-05-12','12:00:00','18:00:00',1,1,NULL,1,'2026-05-28 15:15:02','2026-05-28 15:15:02');
 /*!40000 ALTER TABLE `staff_schedule` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -400,13 +444,13 @@ set autocommit=0;
 INSERT INTO `ticket` VALUES
 (1,'TK0001','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-05-25 03:52:46'),
 (2,'TK0002','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-25 03:52:47'),
-(3,'TK0003','假日單次',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:08'),
-(4,'TK0004','星光票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:08'),
-(5,'TK0005','長期票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:10'),
-(6,'TK0006','學生票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:11'),
-(7,'TK0007','兒童票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:11'),
-(8,'TK0008','體驗票',0.00,0,NULL,'2026-05-21 10:06:13','2026-05-22 10:02:11'),
-(9,'TK0009','公司票',200.00,0,'','2026-05-22 02:59:39','2026-05-22 10:02:12');
+(3,'TK0003','假日單次',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:19'),
+(4,'TK0004','星光票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:20'),
+(5,'TK0005','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:21'),
+(6,'TK0006','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:21'),
+(7,'TK0007','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:22'),
+(8,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:23'),
+(9,'TK0009','公司票',200.00,1,'','2026-05-22 02:59:39','2026-05-27 07:30:23');
 /*!40000 ALTER TABLE `ticket` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -455,4 +499,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-27 10:13:40
+-- Dump completed on 2026-05-29 12:16:33
