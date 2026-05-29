@@ -418,19 +418,14 @@ export default {
 
     passText(passType) {
       const passLabels = {
-        0: '無長期票',
-        single: '無長期票',
-        1: '月票',
-        monthly: '月票',
-        2: '季票',
-        quarterly: '季票',
-        3: '半年票',
-        half_year: '半年票',
-        4: '年票',
-        yearly: '年票',
+        '單次票券': '單次票券',
+        '月票': '月票',
+        '季票': '季票',
+        '半年票': '半年票',
+        '年票': '年票',
       }
 
-      return passLabels[passType] ?? passType ?? '無長期票'
+      return passLabels[passType] ?? passType ?? '單次票券'
     },
 
     formatDate(value) {
@@ -508,7 +503,7 @@ export default {
 
     hasLongTermPass() {
       const passType = this.selectedMember?.pass_type
-      return Boolean(passType && passType !== 'single' && Number(passType) !== 0)
+      return Boolean(passType && passType !== '單次票券')
     },
 
     memberPassSummary() {
@@ -517,7 +512,7 @@ export default {
       }
 
       if (!this.hasLongTermPass) {
-        return '無長期票'
+        return '單次票券'
       }
 
       const label = this.passText(this.selectedMember.pass_type)

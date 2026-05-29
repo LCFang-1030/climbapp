@@ -437,7 +437,7 @@ app.get('/api/members', async (req, res) => {
   try {
     conn = await pool.getConnection();
     const rows = await conn.query(`
-      SELECT m.*, COALESCE(active_pass.pass_type, 'single') AS pass_type
+      SELECT m.*, COALESCE(active_pass.pass_type, '單次票券') AS pass_type
       FROM members m
       LEFT JOIN (
         SELECT mp.member_id, mp.pass_type
