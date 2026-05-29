@@ -5,7 +5,7 @@
         <p class="member-eyebrow">Member Search</p>
         <h1>會員查詢</h1>
         <p class="member-description">
-          透過會員編號、手機、姓名、性別、票券資訊與入場時間快速篩選會員，
+          透過手機號碼、會員編號、姓名、性別、票券資訊與入場時間快速篩選會員，
           並可點選會員編號開啟完整會員資料。
         </p>
       </div>
@@ -71,19 +71,19 @@
         </label>
 
         <label class="search-field">
-          <span>入場開始日期</span>
+          <span>註冊日期</span>
           <input v-model="filters.startDate" type="date" />
         </label>
 
         <label class="search-field">
-          <span>入場結束日期</span>
+          <span>至</span>
           <input v-model="filters.endDate" type="date" />
         </label>
       </div>
 
       <div class="search-actions">
         <div class="search-hint">
-          可單獨使用任一條件搜尋；若有設定入場日期，會依照會員是否曾在該區間入場進行篩選。
+          變更搜尋欄位後，需再次按下搜尋才會更新結果。
         </div>
         <div class="search-button-group">
           <button
@@ -235,6 +235,7 @@ export default {
       datetime: '',
       clockTimer: null,
       filters: createFilters(),
+      appliedFilters: createFilters(),
       members: [],
       memberVisits: [],
       hasLoadedMembers: false,
@@ -354,17 +355,19 @@ export default {
     },
 
     async submitSearch() {
-      this.hasSearched = true
       this.searchMessage = ''
       this.searchMessageType = ''
 
       if (!this.hasAnyFilter) {
+        this.hasSearched = false
+        this.appliedFilters = createFilters()
         this.searchMessage = '請至少輸入一個搜尋條件。'
         this.searchMessageType = 'error'
         return
       }
 
       if (this.filters.startDate && this.filters.endDate && this.filters.startDate > this.filters.endDate) {
+        this.hasSearched = false
         this.searchMessage = '入場開始日期不可晚於結束日期。'
         this.searchMessageType = 'error'
         return
@@ -372,6 +375,8 @@ export default {
 
       try {
         await this.preloadSearchData()
+        this.appliedFilters = { ...this.filters }
+        this.hasSearched = true
       } catch (err) {
         console.error('會員搜尋失敗', err)
         this.searchMessage = '會員搜尋失敗'
@@ -381,6 +386,7 @@ export default {
 
     resetFilters() {
       this.filters = createFilters()
+      this.appliedFilters = createFilters()
       this.hasSearched = false
       this.searchMessage = ''
       this.searchMessageType = ''
@@ -388,74 +394,68 @@ export default {
     },
 
     matchesFilters(member) {
-      if (this.filters.memberCode) {
-        const keyword = normalizeText(this.filters.memberCode)
+      if (this.appliedFilters.memberCode) {
+        const keyword = normalizeText(this.appliedFilters.memberCode)
         if (!normalizeText(member.member_code).includes(keyword)) {
           return false
         }
       }
 
-      if (this.filters.phone) {
-        const keyword = normalizeDigits(this.filters.phone)
+      if (this.appliedFilters.phone) {
+        const keyword = normalizeDigits(this.appliedFilters.phone)
         if (!normalizeDigits(member.phone).includes(keyword)) {
           return false
         }
       }
 
-      if (this.filters.name) {
-        const keyword = normalizeText(this.filters.name)
+      if (this.appliedFilters.name) {
+        const keyword = normalizeText(this.appliedFilters.name)
         if (!normalizeText(member.name).includes(keyword)) {
           return false
         }
       }
 
-      if (this.filters.gender && String(member.gender) !== String(this.filters.gender)) {
+      if (
+        this.appliedFilters.gender
+        && String(member.gender) !== String(this.appliedFilters.gender)
+      ) {
         return false
       }
 
-      if (this.filters.passType) {
+      if (this.appliedFilters.passType) {
         const memberPassType = this.normalizePassType(member.pass_type)
-        if (memberPassType !== this.filters.passType) {
+        if (memberPassType !== this.appliedFilters.passType) {
           return false
         }
       }
 
-      if (!this.matchesVisitDateRange(member.member_id)) {
+      if (!this.matchesCreatedDateRange(member.created_at)) {
         return false
       }
 
       return true
     },
 
-    matchesVisitDateRange(memberId) {
-      if (!this.filters.startDate && !this.filters.endDate) {
+    matchesCreatedDateRange(value) {
+      if (!this.appliedFilters.startDate && !this.appliedFilters.endDate) {
         return true
       }
 
-      const visits = this.memberVisitsByMemberId[Number(memberId)] ?? []
-      if (!visits.length) {
+      const createdDate = new Date(value)
+      if (Number.isNaN(createdDate.getTime())) {
         return false
       }
 
-      return visits.some((visit) => this.isDateWithinRange(visit.checkin_time))
-    },
-
-    isDateWithinRange(value) {
-      const visitDate = new Date(value)
-      if (Number.isNaN(visitDate.getTime())) {
-        return false
-      }
-
-      if (this.filters.startDate) {
-        const startDate = new Date(`${this.filters.startDate}T00:00:00`)
-        if (visitDate < startDate) {
+      if (this.appliedFilters.startDate) {
+        const startDate = new Date(`${this.appliedFilters.startDate}T00:00:00`)
+        if (createdDate < startDate) {
           return false
         }
       }
 
-      if (this.filters.endDate) {
-        const endDate = new Date(`${this.filters.endDate}T23:59:59`)
-        if (visitDate > endDate) {
+      if (this.appliedFilters.endDate) {
+        const endDate = new Date(`${this.appliedFilters.endDate}T23:59:59`)
+        if (createdDate > endDate) {
           return false
         }
       }
