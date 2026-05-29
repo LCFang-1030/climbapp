@@ -39,20 +39,9 @@ const routes = [
     meta: { requiresAuth: true, permissionKey: 'activity' },
   },
   {
-    path: '/form',
-    name: '會員註冊',
-    component: () => import('../views/FormView.vue'),
-    meta: { requiresAuth: true, permissionKey: 'form' },
-  },
-  {
     path: '/staff-signup',
     name: '帳號開通',
     component: () => import('../views/StaffSignupView.vue'),
-  },
-  {
-    path: '/login',
-    name: '員工登入',
-    component: () => import('../views/LoginView.vue'),
   },
   {
     path: '/scheduling',
@@ -77,6 +66,17 @@ const routes = [
     name: '關於',
     component: () => import('../views/AboutView.vue'),
     meta: { requiresAuth: true, permissionKey: 'about' },
+  },
+  {
+    path: '/form',
+    name: '會員註冊',
+    component: () => import('../views/FormView.vue'),
+    meta: { requiresAuth: true, permissionKey: 'form' },
+  },
+  {
+    path: '/login',
+    name: '員工登入',
+    component: () => import('../views/LoginView.vue'),
   },
 ]
 
