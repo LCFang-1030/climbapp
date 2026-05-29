@@ -227,6 +227,169 @@ app.get('/api/staff_schedule/:scheduleId', async (req, res) => {
   }
 });
 
+app.get('/api/bulletin_board', async (req, res) => {
+  const includeInactive = String(req.query.includeInactive ?? '') === '1';
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT
+        bb.id,
+        bb.content,
+        bb.status,
+        bb.created_by,
+        bb.updated_by,
+        bb.is_active,
+        bb.created_at,
+        bb.updated_at,
+        creator.name AS created_by_name,
+        creator.alias AS created_by_alias,
+        updater.name AS updated_by_name,
+        updater.alias AS updated_by_alias
+      FROM bulletin_board bb
+      INNER JOIN staff creator ON creator.eid = bb.created_by
+      LEFT JOIN staff updater ON updater.eid = bb.updated_by
+      ${includeInactive ? '' : 'WHERE bb.is_active = 1'}
+      ORDER BY
+        CASE WHEN bb.status = 4 THEN 0 ELSE 1 END,
+        bb.updated_at DESC,
+        bb.id DESC`
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('bulletin_board fetch error', err);
+    res.status(500).send('bulletin_board DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/bulletin_board', async (req, res) => {
+  const content = String(req.body.content ?? '').trim();
+  const createdBy = Number(req.body.created_by);
+  const status = Number(req.body.status) === 4 ? 4 : 1;
+  const isActive = Number(req.body.is_active) === 0 ? 0 : 1;
+
+  if (!content) {
+    return res.status(400).json({ success: false, message: 'content is required' });
+  }
+
+  if (!createdBy) {
+    return res.status(400).json({ success: false, message: 'created_by is required' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const staffRows = await conn.query(
+      'SELECT eid FROM staff WHERE eid = ?',
+      [createdBy]
+    );
+
+    if (!staffRows.length) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const result = await conn.query(
+      `INSERT INTO bulletin_board (
+        content,
+        status,
+        created_by,
+        is_active
+      ) VALUES (?, ?, ?, ?)`,
+      [content, status, createdBy, isActive]
+    );
+
+    res.json({
+      success: true,
+      id: Number(result.insertId),
+      content,
+      status,
+      created_by: createdBy,
+      is_active: isActive,
+    });
+  } catch (err) {
+    console.error('bulletin_board create error', err);
+    res.status(500).send('bulletin_board DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.patch('/api/bulletin_board/:id', async (req, res) => {
+  const bulletinId = Number(req.params.id);
+  const content = String(req.body.content ?? '').trim();
+  const status = Number(req.body.status);
+  const updatedBy = Number(req.body.updated_by);
+  const isActive = Number(req.body.is_active) === 0 ? 0 : 1;
+
+  if (!bulletinId) {
+    return res.status(400).json({ success: false, message: 'Invalid bulletin id' });
+  }
+
+  if (!content) {
+    return res.status(400).json({ success: false, message: 'content is required' });
+  }
+
+  if (![1, 2, 3, 4].includes(status)) {
+    return res.status(400).json({ success: false, message: 'status must be 1, 2, 3, or 4' });
+  }
+
+  if (!updatedBy) {
+    return res.status(400).json({ success: false, message: 'updated_by is required' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const staffRows = await conn.query(
+      'SELECT eid FROM staff WHERE eid = ?',
+      [updatedBy]
+    );
+
+    if (!staffRows.length) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const existingRows = await conn.query(
+      'SELECT id FROM bulletin_board WHERE id = ?',
+      [bulletinId]
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({ success: false, message: 'Bulletin not found' });
+    }
+
+    await conn.query(
+      `UPDATE bulletin_board
+       SET content = ?,
+           status = ?,
+           updated_by = ?,
+           is_active = ?
+       WHERE id = ?`,
+      [content, status, updatedBy, isActive, bulletinId]
+    );
+
+    res.json({
+      success: true,
+      id: bulletinId,
+      content,
+      status,
+      updated_by: updatedBy,
+      is_active: isActive,
+    });
+  } catch (err) {
+    console.error('bulletin_board update error', err);
+    res.status(500).send('bulletin_board DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/staff_schedule', async (req, res) => {
   const staffId = Number(req.body.staff_id);
   const workDate = String(req.body.work_date ?? '').trim();

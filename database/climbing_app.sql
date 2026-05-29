@@ -37,7 +37,7 @@ CREATE TABLE `bulletin_board` (
   KEY `fk_bulletin_updated_staff` (`updated_by`),
   CONSTRAINT `fk_bulletin_created_staff` FOREIGN KEY (`created_by`) REFERENCES `staff` (`eid`),
   CONSTRAINT `fk_bulletin_updated_staff` FOREIGN KEY (`updated_by`) REFERENCES `staff` (`eid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='留言板資料表';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='留言板資料表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -47,6 +47,9 @@ CREATE TABLE `bulletin_board` (
 LOCK TABLES `bulletin_board` WRITE;
 /*!40000 ALTER TABLE `bulletin_board` DISABLE KEYS */;
 set autocommit=0;
+INSERT INTO `bulletin_board` VALUES
+(1,'這是一個留言板',1,000001,NULL,1,'2026-05-29 15:19:01','2026-05-29 15:19:01'),
+(3,'測試資料',2,000003,1,0,'2026-05-29 15:20:14','2026-05-29 15:36:25');
 /*!40000 ALTER TABLE `bulletin_board` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -499,4 +502,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-29 12:16:33
+-- Dump completed on 2026-05-29 16:16:57
