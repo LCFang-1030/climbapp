@@ -22,28 +22,36 @@
         {{ ticketState.errorMessage }}
       </p>
 
-      <div v-else class="card-list">
-        <button
-          v-for="ticket in ticketState.list"
-          :key="ticket.ticket_id"
-          type="button"
-          class="item-card"
-          @click="openTicketPriceDialog(ticket)"
+      <div v-else class="category-group-list">
+        <section
+          v-for="group in groupItemsByCategory(ticketState.list)"
+          :key="`ticket-${group.categoryName}`"
+          class="category-group"
         >
-          <div class="item-card-top">
-            <div class="item-card-copy">
-              <span class="item-name">{{ ticket.ticket_name }}</span>
-              <span class="item-meta">類別：{{ ticket.category_name || '未分類' }}</span>
-            </div>
-            <span
-              class="status-badge"
-              :class="Number(ticket.is_active) === 0 ? 'inactive' : 'active'"
+          <h3 class="category-group-title">{{ group.categoryName }}</h3>
+          <div class="card-list">
+            <button
+              v-for="ticket in group.items"
+              :key="ticket.ticket_id"
+              type="button"
+              class="item-card"
+              @click="openTicketPriceDialog(ticket)"
             >
-              {{ Number(ticket.is_active) === 0 ? '停用中' : '啟用中' }}
-            </span>
+              <div class="item-card-top">
+                <div class="item-card-copy">
+                  <span class="item-name">{{ ticket.ticket_name }}</span>
+                </div>
+                <span
+                  class="status-badge"
+                  :class="Number(ticket.is_active) === 0 ? 'inactive' : 'active'"
+                >
+                  {{ Number(ticket.is_active) === 0 ? '停用中' : '啟用中' }}
+                </span>
+              </div>
+              <span class="item-price">${{ formatPrice(ticket.ticket_price) }}</span>
+            </button>
           </div>
-          <span class="item-price">${{ formatPrice(ticket.ticket_price) }}</span>
-        </button>
+        </section>
       </div>
     </section>
 
@@ -69,28 +77,36 @@
         {{ rentalState.errorMessage }}
       </p>
 
-      <div v-else class="card-list">
-        <button
-          v-for="rental in rentalState.list"
-          :key="rental.rental_id"
-          type="button"
-          class="item-card"
-          @click="openRentalPriceDialog(rental)"
+      <div v-else class="category-group-list">
+        <section
+          v-for="group in groupItemsByCategory(rentalState.list)"
+          :key="`rental-${group.categoryName}`"
+          class="category-group"
         >
-          <div class="item-card-top">
-            <div class="item-card-copy">
-              <span class="item-name">{{ rental.rental_name }}</span>
-              <span class="item-meta">類別：{{ rental.category_name || '未分類' }}</span>
-            </div>
-            <span
-              class="status-badge"
-              :class="Number(rental.is_active) === 0 ? 'inactive' : 'active'"
+          <h3 class="category-group-title">{{ group.categoryName }}</h3>
+          <div class="card-list">
+            <button
+              v-for="rental in group.items"
+              :key="rental.rental_id"
+              type="button"
+              class="item-card"
+              @click="openRentalPriceDialog(rental)"
             >
-              {{ Number(rental.is_active) === 0 ? '停用中' : '啟用中' }}
-            </span>
+              <div class="item-card-top">
+                <div class="item-card-copy">
+                  <span class="item-name">{{ rental.rental_name }}</span>
+                </div>
+                <span
+                  class="status-badge"
+                  :class="Number(rental.is_active) === 0 ? 'inactive' : 'active'"
+                >
+                  {{ Number(rental.is_active) === 0 ? '停用中' : '啟用中' }}
+                </span>
+              </div>
+              <span class="item-price">${{ formatPrice(rental.rental_price) }}</span>
+            </button>
           </div>
-          <span class="item-price">${{ formatPrice(rental.rental_price) }}</span>
-        </button>
+        </section>
       </div>
     </section>
 
@@ -116,30 +132,37 @@
         {{ productState.errorMessage }}
       </p>
 
-      <div v-else class="card-list">
-        <button
-          v-for="product in productState.list"
-          :key="product.product_id"
-          type="button"
-          class="item-card product-card"
-          @click="openProductPriceDialog(product)"
+      <div v-else class="category-group-list">
+        <section
+          v-for="group in groupItemsByCategory(productState.list)"
+          :key="`product-${group.categoryName}`"
+          class="category-group"
         >
-          <div class="item-card-top">
-            <div class="item-card-copy">
-              <span class="item-name">{{ product.product_name }}</span>
-              <span class="item-meta item-meta-inline">
-                類別：{{ product.category_name || '未分類' }} ／ 庫存：{{ formatStockQty(product.stock_qty) }}
-              </span>
-            </div>
-            <span
-              class="status-badge"
-              :class="Number(product.is_active) === 0 ? 'inactive' : 'active'"
+          <h3 class="category-group-title">{{ group.categoryName }}</h3>
+          <div class="card-list">
+            <button
+              v-for="product in group.items"
+              :key="product.product_id"
+              type="button"
+              class="item-card product-card"
+              @click="openProductPriceDialog(product)"
             >
-              {{ Number(product.is_active) === 0 ? '停用中' : '啟用中' }}
-            </span>
+              <div class="item-card-top">
+                <div class="item-card-copy">
+                  <span class="item-name">{{ product.product_name }}</span>
+                  <span class="item-meta">庫存：{{ formatStockQty(product.stock_qty) }}</span>
+                </div>
+                <span
+                  class="status-badge"
+                  :class="Number(product.is_active) === 0 ? 'inactive' : 'active'"
+                >
+                  {{ Number(product.is_active) === 0 ? '停用中' : '啟用中' }}
+                </span>
+              </div>
+              <span class="item-price">${{ formatPrice(product.product_price) }}</span>
+            </button>
           </div>
-          <span class="item-price">${{ formatPrice(product.product_price) }}</span>
-        </button>
+        </section>
       </div>
     </section>
 
@@ -1168,6 +1191,23 @@ export default {
       return Number(price ?? 0)
     },
 
+    groupItemsByCategory(items) {
+      const groupedMap = new Map()
+
+      items.forEach((item) => {
+        const categoryName = item?.category_name || '未分類'
+        if (!groupedMap.has(categoryName)) {
+          groupedMap.set(categoryName, [])
+        }
+        groupedMap.get(categoryName).push(item)
+      })
+
+      return Array.from(groupedMap.entries()).map(([categoryName, groupedItems]) => ({
+        categoryName,
+        items: groupedItems,
+      }))
+    },
+
     formatStockQty(stockQty) {
       return Number(stockQty ?? 0)
     },
@@ -1222,6 +1262,25 @@ export default {
 
 .section-message.error {
   color: #b00020;
+}
+
+.category-group-list {
+  display: grid;
+  gap: 24px;
+}
+
+.category-group {
+  display: grid;
+  gap: 12px;
+}
+
+.category-group-title {
+  border-left: 4px solid #315efb;
+  color: #1d2733;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  padding-left: 12px;
 }
 
 .card-list {
