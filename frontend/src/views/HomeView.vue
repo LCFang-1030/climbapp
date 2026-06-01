@@ -8,7 +8,10 @@
       <div class="dashboard-grid">
         <section class="dashboard-card bulletin-card">
           <header class="card-header">
-            <h2>留言板</h2>
+            <div class="bulletin-title-group">
+              <h2>留言板</h2>
+              <span class="bulletin-count">{{ bulletinItems.length }}</span>
+            </div>
             <div class="bulletin-actions">
               <button
                 type="button"
@@ -1129,8 +1132,11 @@ export default {
 }
 
 .bulletin-card {
-  min-height: 404px;
+  display: flex;
+  flex-direction: column;
+  height: 470px;
   padding: 30px;
+  box-sizing: border-box;
 }
 
 .stats-card {
@@ -1157,6 +1163,26 @@ export default {
 .card-header h2 {
   font-size: 24px;
   color: #12263a;
+}
+
+.bulletin-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bulletin-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: #1c5ea2;
+  font-size: 14px;
+  font-weight: 800;
 }
 
 .icon-add-button {
@@ -1190,8 +1216,8 @@ export default {
 }
 
 .bulletin-frame {
-  min-height: 274px;
-  max-height: 460px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 10px;
   border: 2px solid #d9dee4;
@@ -1200,11 +1226,14 @@ export default {
 }
 
 .bulletin-item {
+  box-sizing: border-box;
+  height: 136px;
   padding: 14px 16px;
   border: 1px solid #dbe4ec;
   border-radius: 18px;
   background: #ffffff;
   cursor: pointer;
+  overflow: hidden;
 }
 
 .bulletin-item + .bulletin-item {
@@ -1227,8 +1256,15 @@ export default {
 .bulletin-item p {
   margin: 0 0 10px;
   color: #30465c;
-  white-space: pre-wrap;
   line-height: 1.55;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-all;
+  min-height: calc(1.55em * 2);
+  max-height: calc(1.55em * 2);
 }
 
 .bulletin-item time,
@@ -1240,6 +1276,13 @@ export default {
 .timeline-note {
   color: #70859a;
   font-size: 13px;
+}
+
+.bulletin-author {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-pill {
@@ -1283,7 +1326,7 @@ export default {
 
 .price-card {
   align-self: start;
-  min-height: 396px;
+  min-height: 470px;
   padding: 20px;
   box-sizing: border-box;
   width: calc(100% - 18px);
