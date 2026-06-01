@@ -994,10 +994,21 @@ app.get('/api/product', async (req, res) => {
   try {
     conn = await pool.getConnection();
     const rows = await conn.query(`
-      SELECT product_id, product_code, product_name, product_price, is_active, note
-      FROM product
-      ${activeOnly ? 'WHERE is_active = 1' : ''}
-      ORDER BY product_id
+      SELECT
+        p.product_id,
+        p.product_code,
+        p.product_name,
+        p.product_price,
+        p.category_id,
+        pc.category_code,
+        pc.category_name,
+        p.stock_qty,
+        p.is_active,
+        p.note
+      FROM product p
+      LEFT JOIN product_category pc ON pc.category_id = p.category_id
+      ${activeOnly ? 'WHERE p.is_active = 1' : ''}
+      ORDER BY p.product_id
     `);
     res.json(rows);
   } catch (err) {
@@ -1008,10 +1019,30 @@ app.get('/api/product', async (req, res) => {
   }
 });
 
+app.get('/api/product_category', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT category_id, category_code, category_name
+      FROM product_category
+      ORDER BY category_id
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('product_category DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/product', async (req, res) => {
   const {
     product_name,
     product_price,
+    category_id,
+    stock_qty,
     is_active,
     note,
   } = req.body;
@@ -1030,19 +1061,30 @@ app.post('/api/product', async (req, res) => {
         product_code,
         product_name,
         product_price,
+        category_id,
+        stock_qty,
         is_active,
         note
-      ) VALUES (?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
         product_code,
         product_name,
         product_price,
+        category_id,
+        stock_qty,
         is_active,
         note,
       ]
     );
 
-    res.json({ success: true, product_id: result.insertId, product_code, product_name });
+    res.json({
+      success: true,
+      product_id: result.insertId,
+      product_code,
+      product_name,
+      category_id,
+      stock_qty,
+    });
   } catch (err) {
     console.error('新增 product 失敗', err);
     res.status(500).send('DB error');

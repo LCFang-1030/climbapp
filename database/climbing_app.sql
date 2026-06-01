@@ -222,15 +222,19 @@ DROP TABLE IF EXISTS `product`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `product` (
   `product_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '商品ID',
+  `category_id` int(11) NOT NULL,
   `product_code` varchar(50) NOT NULL COMMENT '商品代碼',
   `product_name` varchar(100) NOT NULL COMMENT '商品名稱',
   `product_price` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '商品價格',
+  `stock_qty` int(11) NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用',
   `note` varchar(255) DEFAULT NULL COMMENT '備註',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
   PRIMARY KEY (`product_id`),
-  UNIQUE KEY `product_code` (`product_code`)
+  UNIQUE KEY `product_code` (`product_code`),
+  KEY `fk_product_category` (`category_id`),
+  CONSTRAINT `fk_product_category` FOREIGN KEY (`category_id`) REFERENCES `product_category` (`category_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='商品價格表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -242,8 +246,39 @@ LOCK TABLES `product` WRITE;
 /*!40000 ALTER TABLE `product` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `product` VALUES
-(1,'PROD001','白貼',0.00,1,NULL,'2026-05-25 03:48:54','2026-05-25 03:48:54');
+(1,1,'PROD001','白貼',0.00,0,1,NULL,'2026-05-25 03:48:54','2026-06-01 02:57:41');
 /*!40000 ALTER TABLE `product` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `product_category`
+--
+
+DROP TABLE IF EXISTS `product_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_category` (
+  `category_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '商品分類ID',
+  `category_code` varchar(50) NOT NULL COMMENT '商品分類代碼',
+  `category_name` varchar(100) NOT NULL COMMENT '商品分類名稱',
+  PRIMARY KEY (`category_id`),
+  UNIQUE KEY `category_code` (`category_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `product_category`
+--
+
+LOCK TABLES `product_category` WRITE;
+/*!40000 ALTER TABLE `product_category` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `product_category` VALUES
+(1,'CATE0001','攀岩商品'),
+(2,'CATE0002','長期票券'),
+(3,'CATE0003','飲品');
+/*!40000 ALTER TABLE `product_category` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
 
@@ -502,4 +537,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-05-29 16:16:57
+-- Dump completed on 2026-06-01 11:21:07

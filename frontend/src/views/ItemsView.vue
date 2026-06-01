@@ -88,7 +88,7 @@
       </div>
     </section>
 
-    <section class="management-section">
+    <section class="management-section product-section">
       <div class="section-header">
         <div>
           <h2>商品</h2>
@@ -115,11 +115,16 @@
           v-for="product in productState.list"
           :key="product.product_id"
           type="button"
-          class="item-card"
+          class="item-card product-card"
           @click="openProductPriceDialog(product)"
         >
           <div class="item-card-top">
-            <span class="item-name">{{ product.product_name }}</span>
+            <div class="item-card-copy">
+              <span class="item-name">{{ product.product_name }}</span>
+              <span class="item-meta item-meta-inline">
+                類別：{{ product.category_name || '未分類' }} ／ 庫存：{{ formatStockQty(product.stock_qty) }}
+              </span>
+            </div>
             <span
               class="status-badge"
               :class="Number(product.is_active) === 0 ? 'inactive' : 'active'"
@@ -468,6 +473,16 @@
           </label>
 
           <label>
+            商品分類
+            <input :value="productState.priceForm.category_name" type="text" disabled />
+          </label>
+
+          <label>
+            庫存
+            <input :value="formatStockQty(productState.priceForm.stock_qty)" type="number" disabled />
+          </label>
+
+          <label>
             售價
             <input
               v-model.number="productState.priceForm.product_price"
@@ -514,9 +529,33 @@
           </label>
 
           <label>
+            類別
+            <select v-model.number="productState.createForm.category_id" required>
+              <option :value="null" disabled>請選擇商品類別</option>
+              <option
+                v-for="category in productCategoryOptions"
+                :key="category.category_id"
+                :value="Number(category.category_id)"
+              >
+                {{ category.category_name }}
+              </option>
+            </select>
+          </label>
+
+          <label>
             售價
             <input
               v-model.number="productState.createForm.product_price"
+              type="number"
+              min="0"
+              required
+            />
+          </label>
+
+          <label>
+            庫存數量
+            <input
+              v-model.number="productState.createForm.stock_qty"
               type="number"
               min="0"
               required
@@ -574,7 +613,10 @@
           >
             <div class="settings-copy">
               <strong>{{ product.product_name }}</strong>
-              <span>{{ product.product_code }} | ${{ formatPrice(product.product_price) }}</span>
+              <span>
+                {{ product.product_code }} | {{ product.category_name || '未分類' }} |
+                庫存 {{ formatStockQty(product.stock_qty) }} | ${{ formatPrice(product.product_price) }}
+              </span>
             </div>
 
             <button
@@ -612,7 +654,9 @@ const createEmptyRentalForm = () => ({
 
 const createEmptyProductForm = () => ({
   product_name: '',
+  category_id: null,
   product_price: 0,
+  stock_qty: 0,
   is_active: 1,
   note: '',
 })
@@ -664,16 +708,20 @@ export default {
         priceForm: {
           product_code: '',
           product_name: '',
+          category_name: '',
+          stock_qty: 0,
           product_price: 0,
         },
         createForm: createEmptyProductForm(),
       },
+      productCategoryOptions: [],
     }
   },
 
   mounted() {
     this.fetchTicketList()
     this.fetchRentalList()
+    this.fetchProductCategories()
     this.fetchProductList()
   },
 
@@ -720,6 +768,16 @@ export default {
         this.productState.errorMessage = '商品資料讀取失敗'
       } finally {
         this.productState.isLoading = false
+      }
+    },
+
+    async fetchProductCategories() {
+      try {
+        const res = await axios.get('/api/product_category')
+        this.productCategoryOptions = Array.isArray(res.data) ? res.data : []
+      } catch (err) {
+        console.error('Failed to fetch product categories', err)
+        this.productCategoryOptions = []
       }
     },
 
@@ -926,6 +984,8 @@ export default {
       this.productState.priceForm = {
         product_code: product.product_code ?? '',
         product_name: product.product_name ?? '',
+        category_name: product.category_name ?? '',
+        stock_qty: Number(product.stock_qty ?? 0),
         product_price: Number(product.product_price ?? 0),
       }
       this.productState.isPriceDialogOpen = true
@@ -986,7 +1046,9 @@ export default {
       try {
         await axios.post('/api/product', {
           product_name: this.productState.createForm.product_name,
+          category_id: Number(this.productState.createForm.category_id),
           product_price: Number(this.productState.createForm.product_price),
+          stock_qty: Number(this.productState.createForm.stock_qty),
           is_active: Number(this.productState.createForm.is_active),
           note: this.productState.createForm.note,
         })
@@ -1022,6 +1084,10 @@ export default {
 
     formatPrice(price) {
       return Number(price ?? 0)
+    },
+
+    formatStockQty(stockQty) {
+      return Number(stockQty ?? 0)
     },
   },
 }
@@ -1082,6 +1148,10 @@ export default {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.product-section .card-list {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 220px));
+}
+
 .item-card {
   align-items: flex-start;
   background: #fff;
@@ -1095,6 +1165,13 @@ export default {
   padding: 18px;
   text-align: left;
   transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.item-card-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .item-card:hover,
@@ -1113,10 +1190,23 @@ export default {
   width: 100%;
 }
 
+.product-card .item-card-top {
+  align-items: flex-start;
+}
+
 .item-name {
   color: #1d2733;
   font-size: 18px;
   font-weight: 700;
+}
+
+.item-meta {
+  color: #5b6572;
+  font-size: 13px;
+}
+
+.item-meta-inline {
+  white-space: nowrap;
 }
 
 .item-price {
