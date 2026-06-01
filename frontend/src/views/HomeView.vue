@@ -78,11 +78,8 @@
             <table v-if="activePriceTab === 'ticket'" class="price-table price-table--ticket">
               <thead>
                 <tr>
-                  <th rowspan="2">類型</th>
+                  <th>類型</th>
                   <th :colspan="ticketColumnCount">價格</th>
-                </tr>
-                <tr>
-                  <th v-for="column in ticketPriceColumns" :key="column.key">{{ column.label }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,14 +88,6 @@
                     <tr>
                       <td :rowspan="2" class="price-type-cell">{{ group.type }}</td>
                       <td
-                        v-if="group.mergeLabelRow"
-                        :colspan="ticketColumnCount"
-                        class="price-ticket-name-cell"
-                      >
-                        {{ group.mergeLabelText }}
-                      </td>
-                      <td
-                        v-else
                         v-for="item in group.items"
                         :key="`${group.type}-${item.key}-label`"
                         class="price-ticket-name-cell"
@@ -565,47 +554,71 @@ export default {
     ticketPriceMatrixRows() {
       return this.ticketPriceGroups.map((group) => ({
         type: group.type,
-        mergeLabelRow: Boolean(group.mergeLabelRow),
-        mergeLabelText: group.mergeLabelText || '',
-        items: group.matchers.map((matcher, index) => {
-          const ticket = this.findTicketByMatcher(matcher)
-          return {
-            key: matcher,
-            ticketName: ticket?.ticket_name || group.orderedLabels[index],
-            price: Number(ticket?.ticket_price ?? 0),
-          }
-        }),
+        items: group.source === 'productLongTerm'
+          ? group.orderedLabels.map((label) => {
+            const product = this.findLongTermProductByName(label)
+            return {
+              key: label,
+              ticketName: label,
+              price: Number(product?.product_price ?? 0),
+            }
+          })
+          : group.matchers.map((matcher, index) => {
+            const ticket = this.findTicketByMatcher(matcher)
+            return {
+              key: matcher,
+              ticketName: ticket?.ticket_name || group.orderedLabels[index],
+              price: Number(ticket?.ticket_price ?? 0),
+            }
+          }),
       }))
     },
     ticketPriceGroups() {
       return [
         {
+          key: 'single',
           type: '單次票',
           matchers: ['earlyBird', 'weekdaySingle', 'weekendSingle', 'starlight'],
           orderedLabels: ['平日早鳥', '平日單次', '假日單次', '星光票'],
         },
         {
+          key: 'multi',
           type: '多元票',
           matchers: ['student', 'child', 'experience', 'corporate'],
           orderedLabels: ['學生票', '兒童票', '體驗票', '公司票'],
         },
         {
+          key: 'long-term',
           type: '長期票',
-          matchers: ['longTerm', '', '', ''],
-          orderedLabels: ['長期票', '', '', ''],
-          mergeLabelRow: true,
-          mergeLabelText: '長期票',
+          source: 'productLongTerm',
+          orderedLabels: ['月票', '季票', '半年票', '年票'],
         },
       ]
     },
     ticketColumnCount() {
-      return Math.max(...this.ticketPriceGroups.map((group) => group.matchers.length), 0)
+      return Math.max(
+        ...this.ticketPriceGroups.map((group) => (group.orderedLabels || group.matchers || []).length),
+        0
+      )
     },
-    ticketPriceColumns() {
-      return Array.from({ length: this.ticketColumnCount }, (_, index) => ({
-        key: `ticket-column-${index}`,
-        label: '',
-      }))
+    longTermProducts() {
+      const orderMap = {
+        月票: 0,
+        季票: 1,
+        半年票: 2,
+        年票: 3,
+      }
+
+      return this.products
+        .filter((item) =>
+          Number(item.is_active) === 1
+          && (Number(item.category_id) === 2 || String(item.category_name ?? '').trim() === '長期票券')
+        )
+        .sort((left, right) => {
+          const leftOrder = orderMap[left.product_name] ?? 99
+          const rightOrder = orderMap[right.product_name] ?? 99
+          return leftOrder - rightOrder
+        })
     },
     rentalPriceRows() {
       return this.rentals.map((item) => ({
@@ -1088,6 +1101,9 @@ export default {
     },
     findTicketByMatcher(type) {
       return this.tickets.find((ticket) => this.ticketMatcher(type, ticket)) || null
+    },
+    findLongTermProductByName(name) {
+      return this.longTermProducts.find((item) => String(item.product_name ?? '').trim() === name) || null
     },
   },
 }
