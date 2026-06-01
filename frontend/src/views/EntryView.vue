@@ -3,9 +3,9 @@
     <section class="entry-hero">
       <div>
         <p class="entry-eyebrow">Check In</p>
-        <h1>入場登記</h1>
+        <h1>入場結帳</h1>
         <p class="entry-description">
-          搜尋會員後，直接選擇票種、租借裝備與商品，完成本次入場結帳。
+          搜尋會員後，選擇票券、租借裝備與商品，直接完成本次入場結帳。
         </p>
       </div>
       <div class="entry-clock-card">
@@ -61,54 +61,132 @@
 
       <section class="entry-picker-panel">
         <div v-if="activePicker === 'ticket'" class="entry-button-list">
-          <button
+          <div
             v-for="ticket in ticketOptions"
             :key="ticket.ticket_code"
-            type="button"
             class="entry-select-button"
-            :class="{ selected: ticket.ticket_code === ticket_type }"
-            @click="selectTicket(ticket.ticket_code)"
+            :class="{ selected: getItemQuantity(ticketQuantities, ticket.ticket_code) > 0 }"
           >
-            <span v-if="ticket.ticket_code === ticket_type" class="entry-select-check">✓</span>
+            <span
+              v-if="getItemQuantity(ticketQuantities, ticket.ticket_code) > 0"
+              class="entry-select-check"
+            >
+              ✓
+            </span>
             <div class="entry-select-top">
               <span class="entry-select-name">{{ ticket.ticket_name }}</span>
             </div>
             <span class="entry-select-price">${{ formatPrice(ticket.ticket_price) }}</span>
-          </button>
+            <div class="quantity-controls">
+              <button
+                v-if="getItemQuantity(ticketQuantities, ticket.ticket_code) > 0"
+                type="button"
+                class="quantity-button"
+                @click="changeItemQuantity('ticket', ticket.ticket_code, -1)"
+              >
+                -
+              </button>
+              <span
+                v-if="getItemQuantity(ticketQuantities, ticket.ticket_code) > 0"
+                class="quantity-value"
+              >
+                {{ getItemQuantity(ticketQuantities, ticket.ticket_code) }}
+              </span>
+              <button
+                type="button"
+                class="quantity-button"
+                @click="changeItemQuantity('ticket', ticket.ticket_code, 1)"
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
 
         <div v-else-if="activePicker === 'rental'" class="entry-button-list">
-          <button
+          <div
             v-for="item in equipmentOptions"
             :key="item.rental_code"
-            type="button"
             class="entry-select-button compact"
-            :class="{ selected: equipment.includes(item.rental_code) }"
-            @click="toggleEquipment(item.rental_code)"
+            :class="{ selected: getItemQuantity(equipmentQuantities, item.rental_code) > 0 }"
           >
-            <span v-if="equipment.includes(item.rental_code)" class="entry-select-check">✓</span>
+            <span
+              v-if="getItemQuantity(equipmentQuantities, item.rental_code) > 0"
+              class="entry-select-check"
+            >
+              ✓
+            </span>
             <div class="entry-select-top">
               <span class="entry-select-name">{{ item.rental_name }}</span>
             </div>
             <span class="entry-select-price">${{ formatPrice(item.rental_price) }}</span>
-          </button>
+            <div class="quantity-controls">
+              <button
+                v-if="getItemQuantity(equipmentQuantities, item.rental_code) > 0"
+                type="button"
+                class="quantity-button"
+                @click="changeItemQuantity('rental', item.rental_code, -1)"
+              >
+                -
+              </button>
+              <span
+                v-if="getItemQuantity(equipmentQuantities, item.rental_code) > 0"
+                class="quantity-value"
+              >
+                {{ getItemQuantity(equipmentQuantities, item.rental_code) }}
+              </span>
+              <button
+                type="button"
+                class="quantity-button"
+                @click="changeItemQuantity('rental', item.rental_code, 1)"
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
 
         <div v-else class="entry-button-list">
-          <button
+          <div
             v-for="product in productOptions"
             :key="product.product_code"
-            type="button"
             class="entry-select-button compact"
-            :class="{ selected: products.includes(product.product_code) }"
-            @click="toggleProduct(product.product_code)"
+            :class="{ selected: getItemQuantity(productQuantities, product.product_code) > 0 }"
           >
-            <span v-if="products.includes(product.product_code)" class="entry-select-check">✓</span>
+            <span
+              v-if="getItemQuantity(productQuantities, product.product_code) > 0"
+              class="entry-select-check"
+            >
+              ✓
+            </span>
             <div class="entry-select-top">
               <span class="entry-select-name">{{ product.product_name }}</span>
             </div>
             <span class="entry-select-price">${{ formatPrice(product.product_price) }}</span>
-          </button>
+            <div class="quantity-controls">
+              <button
+                v-if="getItemQuantity(productQuantities, product.product_code) > 0"
+                type="button"
+                class="quantity-button"
+                @click="changeItemQuantity('product', product.product_code, -1)"
+              >
+                -
+              </button>
+              <span
+                v-if="getItemQuantity(productQuantities, product.product_code) > 0"
+                class="quantity-value"
+              >
+                {{ getItemQuantity(productQuantities, product.product_code) }}
+              </span>
+              <button
+                type="button"
+                class="quantity-button"
+                @click="changeItemQuantity('product', product.product_code, 1)"
+              >
+                +
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -118,19 +196,10 @@
           <div v-if="selectedMember" class="member-info">
             <div class="member-info-row">
               <span>會員編號</span>
-              <strong>{{ member_code }}</strong>
+              <strong>{{ member_code || '-' }}</strong>
             </div>
-            <div class="member-info-row">
-              <span>姓名</span>
-              <strong>{{ selectedMember.name || '-' }}</strong>
-            </div>
-            <div class="member-info-row">
-              <span>手機</span>
-              <strong>{{ selectedMember.phone || '-' }}</strong>
-            </div>
-            <div class="member-info-row">
-              <span>票券狀態</span>
-              <strong>{{ memberPassSummary }}</strong>
+            <div class="member-info-meta">
+              {{ selectedMember.name || '-' }} | {{ selectedMember.phone || '-' }} | {{ memberPassSummary }}
             </div>
           </div>
           <p v-else class="empty-state">搜尋並選擇會員後，資料會顯示在這裡。</p>
@@ -148,7 +217,7 @@
               {{ chip.label }}
             </span>
           </div>
-          <p v-else class="empty-state">尚未選擇票種、租借裝備或商品。</p>
+          <p v-else class="empty-state">尚未選擇票券、租借裝備或商品。</p>
         </div>
 
         <div class="checkout-total-card">
@@ -173,6 +242,12 @@
 
 <script>
 import axios from 'axios'
+
+const QUANTITY_MAP_KEYS = {
+  ticket: 'ticketQuantities',
+  rental: 'equipmentQuantities',
+  product: 'productQuantities',
+}
 
 export default {
   mounted() {
@@ -200,9 +275,9 @@ export default {
       members: [],
       isSearching: false,
       searchMessage: '',
-      equipment: [],
-      products: [],
-      ticket_type: null,
+      ticketQuantities: {},
+      equipmentQuantities: {},
+      productQuantities: {},
       equipmentOptions: [],
       productOptions: [],
       ticketOptions: [],
@@ -212,7 +287,7 @@ export default {
       visitMessageType: '',
       isClearingSearchAfterSelect: false,
       pickerTabs: [
-        { key: 'ticket', label: '票種' },
+        { key: 'ticket', label: '票券' },
         { key: 'rental', label: '租借裝備' },
         { key: 'product', label: '商品' },
       ],
@@ -230,7 +305,7 @@ export default {
       }
 
       const res = await axios.get('/api/members')
-      this.members = res.data
+      this.members = Array.isArray(res.data) ? res.data : []
     },
 
     async fetchTickets() {
@@ -240,7 +315,7 @@ export default {
           ? res.data.filter((ticket) => Number(ticket.is_active) !== 0)
           : []
       } catch (err) {
-        console.error('載入票種失敗', err)
+        console.error('載入票券失敗', err)
       }
     },
 
@@ -266,26 +341,44 @@ export default {
       }
     },
 
-    selectTicket(ticketCode) {
-      this.ticket_type = this.ticket_type === ticketCode ? null : ticketCode
+    getItemQuantity(quantityMap, code) {
+      return Number(quantityMap?.[code] ?? 0)
     },
 
-    toggleEquipment(rentalCode) {
-      if (this.equipment.includes(rentalCode)) {
-        this.equipment = this.equipment.filter((code) => code !== rentalCode)
+    setItemQuantity(type, code, quantity) {
+      const mapKey = QUANTITY_MAP_KEYS[type]
+
+      if (!mapKey || !code) {
         return
       }
 
-      this.equipment = [...this.equipment, rentalCode]
-    },
+      const nextMap = { ...this[mapKey] }
 
-    toggleProduct(productCode) {
-      if (this.products.includes(productCode)) {
-        this.products = this.products.filter((code) => code !== productCode)
-        return
+      if (quantity <= 0) {
+        delete nextMap[code]
+      } else {
+        nextMap[code] = quantity
       }
 
-      this.products = [...this.products, productCode]
+      this[mapKey] = nextMap
+    },
+
+    changeItemQuantity(type, code, delta) {
+      const mapKey = QUANTITY_MAP_KEYS[type]
+      const currentQuantity = this.getItemQuantity(this[mapKey], code)
+      this.setItemQuantity(type, code, currentQuantity + delta)
+    },
+
+    normalizePhone(value) {
+      return String(value ?? '').replace(/\D/g, '')
+    },
+
+    memberKey(member) {
+      return member.id ?? member.mid ?? member.member_id ?? member.member_code ?? JSON.stringify(member)
+    },
+
+    suggestionText(member) {
+      return `${member.phone ?? ''} | ${member.name ?? ''} | ${member.member_code ?? ''}`
     },
 
     async searchMember() {
@@ -399,18 +492,6 @@ export default {
       this.visitMessageType = ''
     },
 
-    normalizePhone(value) {
-      return String(value ?? '').replace(/\D/g, '')
-    },
-
-    memberKey(member) {
-      return member.id ?? member.mid ?? member.member_id ?? member.member_code ?? JSON.stringify(member)
-    },
-
-    suggestionText(member) {
-      return `${member.phone ?? ''} | ${member.name ?? ''} | ${member.member_code ?? ''}`
-    },
-
     clearMember() {
       this.selectedMember = null
       this.member_code = ''
@@ -418,14 +499,19 @@ export default {
 
     passText(passType) {
       const passLabels = {
-        '單次票券': '單次票券',
-        '月票': '月票',
-        '季票': '季票',
-        '半年票': '半年票',
-        '年票': '年票',
+        0: '單次票',
+        1: '月票',
+        2: '季票',
+        3: '半年票',
+        4: '年票',
+        single: '單次票',
+        monthly: '月票',
+        quarterly: '季票',
+        half_year: '半年票',
+        yearly: '年票',
       }
 
-      return passLabels[passType] ?? passType ?? '單次票券'
+      return passLabels[passType] ?? passType ?? '單次票'
     },
 
     formatDate(value) {
@@ -446,6 +532,10 @@ export default {
       return Number(value ?? 0).toLocaleString('zh-TW')
     },
 
+    buildExpandedCodes(items, codeKey) {
+      return items.flatMap((item) => Array.from({ length: item.quantity }, () => item[codeKey]))
+    },
+
     async submitVisit() {
       if (!this.selectedMember?.member_id) {
         this.visitMessage = '請先選擇會員'
@@ -453,8 +543,8 @@ export default {
         return
       }
 
-      if (!this.ticket_type) {
-        this.visitMessage = '請先選擇票種'
+      if (!this.selectedTicketItems.length) {
+        this.visitMessage = '請先選擇票券'
         this.visitMessageType = 'error'
         return
       }
@@ -466,16 +556,28 @@ export default {
       try {
         await axios.post('/api/member_visits', {
           member_id: this.selectedMember.member_id,
-          ticket_code: this.ticket_type,
-          rental_codes: this.equipment,
-          product_codes: this.products,
+          ticket_code: this.selectedTicketItems[0]?.ticket_code ?? '',
+          ticket_items: this.selectedTicketItems.map((item) => ({
+            ticket_code: item.ticket_code,
+            quantity: item.quantity,
+          })),
+          rental_codes: this.buildExpandedCodes(this.selectedEquipmentItems, 'rental_code'),
+          rental_items: this.selectedEquipmentItems.map((item) => ({
+            rental_code: item.rental_code,
+            quantity: item.quantity,
+          })),
+          product_codes: this.buildExpandedCodes(this.selectedProductItems, 'product_code'),
+          product_items: this.selectedProductItems.map((item) => ({
+            product_code: item.product_code,
+            quantity: item.quantity,
+          })),
         })
 
         this.visitMessage = '入場資料已建立'
         this.visitMessageType = 'success'
-        this.ticket_type = null
-        this.equipment = []
-        this.products = []
+        this.ticketQuantities = {}
+        this.equipmentQuantities = {}
+        this.productQuantities = {}
       } catch (err) {
         console.error('建立入場失敗', err)
         this.visitMessage = err.response?.data?.message ?? '建立入場失敗'
@@ -497,13 +599,9 @@ export default {
         .map((result) => result.member)
     },
 
-    selectedTicket() {
-      return this.ticketOptions.find((ticket) => ticket.ticket_code === this.ticket_type)
-    },
-
     hasLongTermPass() {
       const passType = this.selectedMember?.pass_type
-      return Boolean(passType && passType !== '單次票券')
+      return Boolean(passType && passType !== 'single' && Number(passType) !== 0)
     },
 
     memberPassSummary() {
@@ -512,7 +610,7 @@ export default {
       }
 
       if (!this.hasLongTermPass) {
-        return '單次票券'
+        return '單次票'
       }
 
       const label = this.passText(this.selectedMember.pass_type)
@@ -523,31 +621,56 @@ export default {
       return expiresAt ? `${label}｜到期 ${expiresAt}` : label
     },
 
+    selectedTicketItems() {
+      return this.ticketOptions
+        .filter((ticket) => this.getItemQuantity(this.ticketQuantities, ticket.ticket_code) > 0)
+        .map((ticket) => ({
+          ...ticket,
+          quantity: this.getItemQuantity(this.ticketQuantities, ticket.ticket_code),
+        }))
+    },
+
+    selectedEquipmentItems() {
+      return this.equipmentOptions
+        .filter((item) => this.getItemQuantity(this.equipmentQuantities, item.rental_code) > 0)
+        .map((item) => ({
+          ...item,
+          quantity: this.getItemQuantity(this.equipmentQuantities, item.rental_code),
+        }))
+    },
+
+    selectedProductItems() {
+      return this.productOptions
+        .filter((item) => this.getItemQuantity(this.productQuantities, item.product_code) > 0)
+        .map((item) => ({
+          ...item,
+          quantity: this.getItemQuantity(this.productQuantities, item.product_code),
+        }))
+    },
+
     selectedSummaryChips() {
       const chips = []
 
-      if (this.selectedTicket) {
+      this.selectedTicketItems.forEach((item) => {
         chips.push({
-          key: `ticket-${this.selectedTicket.ticket_code}`,
-          label: this.selectedTicket.ticket_name,
+          key: `ticket-${item.ticket_code}`,
+          label: `${item.ticket_name} x${item.quantity}`,
           type: 'ticket',
         })
-      }
+      })
 
-      this.equipment.forEach((code) => {
-        const option = this.equipmentOptions.find((item) => item.rental_code === code)
+      this.selectedEquipmentItems.forEach((item) => {
         chips.push({
-          key: `rental-${code}`,
-          label: option?.rental_name || code,
+          key: `rental-${item.rental_code}`,
+          label: `${item.rental_name} x${item.quantity}`,
           type: 'rental',
         })
       })
 
-      this.products.forEach((code) => {
-        const option = this.productOptions.find((item) => item.product_code === code)
+      this.selectedProductItems.forEach((item) => {
         chips.push({
-          key: `product-${code}`,
-          label: option?.product_name || code,
+          key: `product-${item.product_code}`,
+          label: `${item.product_name} x${item.quantity}`,
           type: 'product',
         })
       })
@@ -560,15 +683,18 @@ export default {
     },
 
     price_total() {
-      const ticketTotal = Number(this.selectedTicket?.ticket_price ?? 0)
-      const equipmentTotal = this.equipment.reduce((total, code) => {
-        const item = this.equipmentOptions.find((option) => option.rental_code === code)
-        return total + Number(item?.rental_price ?? 0)
-      }, 0)
-      const productTotal = this.products.reduce((total, code) => {
-        const item = this.productOptions.find((option) => option.product_code === code)
-        return total + Number(item?.product_price ?? 0)
-      }, 0)
+      const ticketTotal = this.selectedTicketItems.reduce(
+        (total, item) => total + Number(item.ticket_price ?? 0) * Number(item.quantity ?? 0),
+        0
+      )
+      const equipmentTotal = this.selectedEquipmentItems.reduce(
+        (total, item) => total + Number(item.rental_price ?? 0) * Number(item.quantity ?? 0),
+        0
+      )
+      const productTotal = this.selectedProductItems.reduce(
+        (total, item) => total + Number(item.product_price ?? 0) * Number(item.quantity ?? 0),
+        0
+      )
 
       return ticketTotal + equipmentTotal + productTotal
     },
@@ -710,8 +836,8 @@ export default {
 
 .primary-button,
 .submit-button,
-.ghost-button,
-.entry-tab {
+.entry-tab,
+.quantity-button {
   border: 0;
   cursor: pointer;
   font: inherit;
@@ -728,23 +854,15 @@ export default {
   padding: 15px 24px;
 }
 
-.ghost-button {
-  border-radius: 999px;
-  background: rgba(47, 122, 83, 0.08);
-  color: var(--accent-strong);
-  padding: 12px 18px;
-}
-
 .primary-button:hover,
 .submit-button:hover,
-.ghost-button:hover,
-.entry-tab:hover {
+.entry-tab:hover,
+.quantity-button:hover {
   transform: translateY(-1px);
 }
 
 .primary-button:disabled,
-.submit-button:disabled,
-.ghost-button:disabled {
+.submit-button:disabled {
   opacity: 0.55;
   cursor: wait;
   transform: none;
@@ -838,17 +956,18 @@ export default {
   border: 1px solid rgba(41, 88, 61, 0.14);
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(240, 247, 242, 0.96) 100%);
-  cursor: pointer;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 6px;
   padding: 16px 16px 14px;
   text-align: left;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.entry-select-button:hover,
-.entry-select-button:focus {
+.entry-select-button:hover {
   border-color: rgba(47, 122, 83, 0.34);
   box-shadow: 0 14px 30px rgba(25, 50, 37, 0.1);
   transform: translateY(-1px);
@@ -874,11 +993,14 @@ export default {
 .entry-select-name {
   font-size: 16px;
   font-weight: 700;
+  padding-right: 24px;
+  word-break: break-word;
 }
 
 .entry-select-price {
   color: var(--text-soft);
   font-size: 14px;
+  padding-right: 76px;
 }
 
 .entry-select-check {
@@ -894,6 +1016,35 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 13px;
+  font-weight: 700;
+}
+
+.quantity-controls {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.quantity-button {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(47, 122, 83, 0.12);
+  color: var(--accent-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.quantity-value {
+  min-width: 18px;
+  text-align: center;
   font-weight: 700;
 }
 
@@ -932,7 +1083,7 @@ export default {
 
 .member-info {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .member-info-row {
@@ -941,7 +1092,7 @@ export default {
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid rgba(41, 88, 61, 0.1);
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .member-info-row span {
@@ -950,6 +1101,13 @@ export default {
 
 .member-info-row strong {
   text-align: right;
+}
+
+.member-info-meta {
+  color: var(--text-main);
+  font-size: 15px;
+  line-height: 1.6;
+  word-break: break-word;
 }
 
 .selection-chip-list {
@@ -1032,6 +1190,13 @@ export default {
     grid-template-columns: repeat(auto-fill, 140px);
   }
 
+  .entry-select-button,
+  .entry-select-button.compact {
+    width: 140px;
+    min-height: 88px;
+    height: 88px;
+  }
+
   .checkout-panel {
     position: static;
     left: auto;
@@ -1060,8 +1225,7 @@ export default {
   }
 
   .entry-clock-card,
-  .primary-button,
-  .ghost-button {
+  .primary-button {
     width: 100%;
   }
 

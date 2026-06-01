@@ -1450,15 +1450,52 @@ app.get('/api/member_visits/:visitId/rentals', async (req, res) => {
 app.post('/api/member_visits', async (req, res) => {
   const memberId = Number(req.body.member_id);
   const ticketCode = String(req.body.ticket_code ?? '').trim();
+  const normalizeQuantityItems = (items, codeKey) => (
+    Array.isArray(items)
+      ? items
+        .map((item) => ({
+          [codeKey]: String(item?.[codeKey] ?? '').trim(),
+          quantity: Number(item?.quantity ?? 0),
+        }))
+        .filter((item) => item[codeKey] && item.quantity > 0)
+      : []
+  );
+  const collapseCodesToItems = (codes, codeKey) => {
+    const quantityMap = new Map();
+
+    codes.forEach((code) => {
+      const normalizedCode = String(code ?? '').trim();
+
+      if (!normalizedCode) {
+        return;
+      }
+
+      quantityMap.set(normalizedCode, Number(quantityMap.get(normalizedCode) ?? 0) + 1);
+    });
+
+    return Array.from(quantityMap.entries()).map(([code, quantity]) => ({
+      [codeKey]: code,
+      quantity,
+    }));
+  };
+  const ticketItems = normalizeQuantityItems(req.body.ticket_items, 'ticket_code');
   const rentalCodes = Array.isArray(req.body.rental_codes)
     ? req.body.rental_codes.map((code) => String(code ?? '').trim()).filter(Boolean)
     : [];
+  const rentalItems = normalizeQuantityItems(req.body.rental_items, 'rental_code');
+  const productItems = normalizeQuantityItems(req.body.product_items, 'product_code');
+  const normalizedTicketItems = ticketItems.length
+    ? ticketItems
+    : (ticketCode ? [{ ticket_code: ticketCode, quantity: 1 }] : []);
+  const normalizedRentalItems = rentalItems.length
+    ? rentalItems
+    : collapseCodesToItems(rentalCodes, 'rental_code');
 
   if (!memberId) {
     return res.status(400).json({ success: false, message: 'member_id is required' });
   }
 
-  if (!ticketCode) {
+  if (!normalizedTicketItems.length) {
     return res.status(400).json({ success: false, message: 'ticket_code is required' });
   }
 
@@ -1477,33 +1514,44 @@ app.post('/api/member_visits', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
+    const uniqueTicketCodes = [...new Set(normalizedTicketItems.map((item) => item.ticket_code))];
+    const ticketPlaceholders = uniqueTicketCodes.map(() => '?').join(', ');
     const ticketRows = await conn.query(
-      `SELECT ticket_id, ticket_code
+      `SELECT ticket_id, ticket_code, ticket_name
        FROM ticket
-       WHERE ticket_code = ? AND is_active = 1`,
-      [ticketCode]
+       WHERE ticket_code IN (${ticketPlaceholders}) AND is_active = 1`,
+      uniqueTicketCodes
     );
 
-    if (!ticketRows.length) {
+    if (ticketRows.length !== uniqueTicketCodes.length) {
       await conn.rollback();
       return res.status(400).json({ success: false, message: 'Ticket not found or inactive' });
     }
 
     let rentals = [];
-    if (rentalCodes.length) {
-      const placeholders = rentalCodes.map(() => '?').join(', ');
+    if (normalizedRentalItems.length) {
+      const uniqueRentalCodes = [...new Set(normalizedRentalItems.map((item) => item.rental_code))];
+      const placeholders = uniqueRentalCodes.map(() => '?').join(', ');
       rentals = await conn.query(
         `SELECT rental_id, rental_code, rental_price
          FROM rental_equipment
          WHERE rental_code IN (${placeholders}) AND is_active = 1`,
-        rentalCodes
+        uniqueRentalCodes
       );
 
-      if (rentals.length !== rentalCodes.length) {
+      if (rentals.length !== uniqueRentalCodes.length) {
         await conn.rollback();
         return res.status(400).json({ success: false, message: 'Rental equipment not found or inactive' });
       }
     }
+
+    const visitTypeSummary = normalizedTicketItems
+      .map((item) => {
+        const ticket = ticketRows.find((row) => row.ticket_code === item.ticket_code);
+        const label = ticket?.ticket_name ?? item.ticket_code;
+        return item.quantity > 1 ? `${label} x${item.quantity}` : label;
+      })
+      .join(' | ');
 
     const visitResult = await conn.query(
       `INSERT INTO member_visits (
@@ -1511,22 +1559,24 @@ app.post('/api/member_visits', async (req, res) => {
         checkin_time,
         visit_type
       ) VALUES (?, NOW(), ?)`,
-      [memberId, ticketCode]
+      [memberId, visitTypeSummary]
     );
 
     const visitId = Number(visitResult.insertId);
 
-    for (const rentalCode of rentalCodes) {
-      const rental = rentals.find((item) => item.rental_code === rentalCode);
+    for (const rentalItem of normalizedRentalItems) {
+      const rental = rentals.find((item) => item.rental_code === rentalItem.rental_code);
 
-      await conn.query(
-        `INSERT INTO visit_rental_equipment (
-          visit_id,
-          rental_id,
-          rental_price
-        ) VALUES (?, ?, ?)`,
-        [visitId, rental.rental_id, Number(rental.rental_price ?? 0)]
-      );
+      for (let index = 0; index < rentalItem.quantity; index += 1) {
+        await conn.query(
+          `INSERT INTO visit_rental_equipment (
+            visit_id,
+            rental_id,
+            rental_price
+          ) VALUES (?, ?, ?)`,
+          [visitId, rental.rental_id, Number(rental.rental_price ?? 0)]
+        );
+      }
     }
 
     await conn.commit();
@@ -1534,8 +1584,10 @@ app.post('/api/member_visits', async (req, res) => {
       success: true,
       visit_id: visitId,
       member_id: memberId,
-      ticket_code: ticketCode,
-      rental_codes: rentalCodes,
+      ticket_code: normalizedTicketItems[0]?.ticket_code ?? ticketCode,
+      ticket_items: normalizedTicketItems,
+      rental_items: normalizedRentalItems,
+      product_items: productItems,
     });
   } catch (err) {
     if (conn) {
