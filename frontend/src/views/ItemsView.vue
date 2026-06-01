@@ -31,7 +31,10 @@
           @click="openTicketPriceDialog(ticket)"
         >
           <div class="item-card-top">
-            <span class="item-name">{{ ticket.ticket_name }}</span>
+            <div class="item-card-copy">
+              <span class="item-name">{{ ticket.ticket_name }}</span>
+              <span class="item-meta">類別：{{ ticket.category_name || '未分類' }}</span>
+            </div>
             <span
               class="status-badge"
               :class="Number(ticket.is_active) === 0 ? 'inactive' : 'active'"
@@ -75,7 +78,10 @@
           @click="openRentalPriceDialog(rental)"
         >
           <div class="item-card-top">
-            <span class="item-name">{{ rental.rental_name }}</span>
+            <div class="item-card-copy">
+              <span class="item-name">{{ rental.rental_name }}</span>
+              <span class="item-meta">類別：{{ rental.category_name || '未分類' }}</span>
+            </div>
             <span
               class="status-badge"
               :class="Number(rental.is_active) === 0 ? 'inactive' : 'active'"
@@ -167,6 +173,11 @@
           </label>
 
           <label>
+            類別
+            <input :value="ticketState.priceForm.category_name" type="text" disabled />
+          </label>
+
+          <label>
             票價
             <input
               v-model.number="ticketState.priceForm.ticket_price"
@@ -210,6 +221,20 @@
           <label>
             票券名稱
             <input v-model.trim="ticketState.createForm.ticket_name" type="text" required />
+          </label>
+
+          <label>
+            類別
+            <select v-model.number="ticketState.createForm.category_id" required>
+              <option :value="null" disabled>請選擇票券類別</option>
+              <option
+                v-for="category in ticketCategoryOptions"
+                :key="category.category_id"
+                :value="Number(category.category_id)"
+              >
+                {{ category.category_name }}
+              </option>
+            </select>
           </label>
 
           <label>
@@ -273,7 +298,10 @@
           >
             <div class="settings-copy">
               <strong>{{ ticket.ticket_name }}</strong>
-              <span>{{ ticket.ticket_code }} | ${{ formatPrice(ticket.ticket_price) }}</span>
+              <span>
+                {{ ticket.ticket_code }} | {{ ticket.category_name || '未分類' }} |
+                ${{ formatPrice(ticket.ticket_price) }}
+              </span>
             </div>
 
             <button
@@ -320,6 +348,11 @@
           </label>
 
           <label>
+            類別
+            <input :value="rentalState.priceForm.category_name" type="text" disabled />
+          </label>
+
+          <label>
             租借價格
             <input
               v-model.number="rentalState.priceForm.rental_price"
@@ -363,6 +396,20 @@
           <label>
             裝備名稱
             <input v-model.trim="rentalState.createForm.rental_name" type="text" required />
+          </label>
+
+          <label>
+            類別
+            <select v-model.number="rentalState.createForm.category_id" required>
+              <option :value="null" disabled>請選擇租借裝備類別</option>
+              <option
+                v-for="category in rentalCategoryOptions"
+                :key="category.category_id"
+                :value="Number(category.category_id)"
+              >
+                {{ category.category_name }}
+              </option>
+            </select>
           </label>
 
           <label>
@@ -426,7 +473,10 @@
           >
             <div class="settings-copy">
               <strong>{{ rental.rental_name }}</strong>
-              <span>{{ rental.rental_code }} | ${{ formatPrice(rental.rental_price) }}</span>
+              <span>
+                {{ rental.rental_code }} | {{ rental.category_name || '未分類' }} |
+                ${{ formatPrice(rental.rental_price) }}
+              </span>
             </div>
 
             <button
@@ -640,6 +690,7 @@ import axios from 'axios'
 
 const createEmptyTicketForm = () => ({
   ticket_name: '',
+  category_id: null,
   ticket_price: 0,
   is_active: 1,
   note: '',
@@ -647,6 +698,7 @@ const createEmptyTicketForm = () => ({
 
 const createEmptyRentalForm = () => ({
   rental_name: '',
+  category_id: null,
   rental_price: 0,
   is_active: 1,
   note: '',
@@ -676,6 +728,7 @@ export default {
         priceForm: {
           ticket_code: '',
           ticket_name: '',
+          category_name: '',
           ticket_price: 0,
         },
         createForm: createEmptyTicketForm(),
@@ -692,6 +745,7 @@ export default {
         priceForm: {
           rental_code: '',
           rental_name: '',
+          category_name: '',
           rental_price: 0,
         },
         createForm: createEmptyRentalForm(),
@@ -714,13 +768,17 @@ export default {
         },
         createForm: createEmptyProductForm(),
       },
+      ticketCategoryOptions: [],
+      rentalCategoryOptions: [],
       productCategoryOptions: [],
     }
   },
 
   mounted() {
     this.fetchTicketList()
+    this.fetchTicketCategories()
     this.fetchRentalList()
+    this.fetchRentalCategories()
     this.fetchProductCategories()
     this.fetchProductList()
   },
@@ -741,6 +799,16 @@ export default {
       }
     },
 
+    async fetchTicketCategories() {
+      try {
+        const res = await axios.get('/api/ticket_category')
+        this.ticketCategoryOptions = Array.isArray(res.data) ? res.data : []
+      } catch (err) {
+        console.error('Failed to fetch ticket categories', err)
+        this.ticketCategoryOptions = []
+      }
+    },
+
     async fetchRentalList() {
       this.rentalState.isLoading = true
       this.rentalState.errorMessage = ''
@@ -753,6 +821,16 @@ export default {
         this.rentalState.errorMessage = '租借裝備資料讀取失敗'
       } finally {
         this.rentalState.isLoading = false
+      }
+    },
+
+    async fetchRentalCategories() {
+      try {
+        const res = await axios.get('/api/rental_equipment_category')
+        this.rentalCategoryOptions = Array.isArray(res.data) ? res.data : []
+      } catch (err) {
+        console.error('Failed to fetch rental categories', err)
+        this.rentalCategoryOptions = []
       }
     },
 
@@ -786,6 +864,7 @@ export default {
       this.ticketState.priceForm = {
         ticket_code: ticket.ticket_code ?? '',
         ticket_name: ticket.ticket_name ?? '',
+        category_name: ticket.category_name ?? '',
         ticket_price: Number(ticket.ticket_price ?? 0),
       }
       this.ticketState.isPriceDialogOpen = true
@@ -846,6 +925,7 @@ export default {
       try {
         await axios.post('/api/ticket', {
           ticket_name: this.ticketState.createForm.ticket_name,
+          category_id: Number(this.ticketState.createForm.category_id),
           ticket_price: Number(this.ticketState.createForm.ticket_price),
           is_active: Number(this.ticketState.createForm.is_active),
           note: this.ticketState.createForm.note,
@@ -885,6 +965,7 @@ export default {
       this.rentalState.priceForm = {
         rental_code: rental.rental_code ?? '',
         rental_name: rental.rental_name ?? '',
+        category_name: rental.category_name ?? '',
         rental_price: Number(rental.rental_price ?? 0),
       }
       this.rentalState.isPriceDialogOpen = true
@@ -945,6 +1026,7 @@ export default {
       try {
         await axios.post('/api/rental_equipment', {
           rental_name: this.rentalState.createForm.rental_name,
+          category_id: Number(this.rentalState.createForm.category_id),
           rental_price: Number(this.rentalState.createForm.rental_price),
           is_active: Number(this.rentalState.createForm.is_active),
           note: this.rentalState.createForm.note,

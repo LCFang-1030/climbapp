@@ -821,10 +821,20 @@ app.get('/api/ticket', async (req, res) => {
   try {
     conn = await pool.getConnection();
     const rows = await conn.query(`
-      SELECT ticket_id, ticket_code, ticket_name, ticket_price, is_active, note
-      FROM ticket
-      ${activeOnly ? 'WHERE is_active = 1' : ''}
-      ORDER BY ticket_id
+      SELECT
+        t.ticket_id,
+        t.ticket_code,
+        t.ticket_name,
+        t.ticket_price,
+        t.category_id,
+        tc.category_code,
+        tc.category_name,
+        t.is_active,
+        t.note
+      FROM ticket t
+      LEFT JOIN ticket_category tc ON tc.category_id = t.category_id
+      ${activeOnly ? 'WHERE t.is_active = 1' : ''}
+      ORDER BY t.ticket_id
     `);
     res.json(rows);
   } catch (err) {
@@ -835,10 +845,29 @@ app.get('/api/ticket', async (req, res) => {
   }
 });
 
+app.get('/api/ticket_category', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT category_id, category_code, category_name
+      FROM ticket_category
+      ORDER BY category_id
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('ticket_category DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/ticket', async (req, res) => {
   const {
     ticket_name,
     ticket_price,
+    category_id,
     is_active,
     note,
   } = req.body;
@@ -857,19 +886,27 @@ app.post('/api/ticket', async (req, res) => {
         ticket_code,
         ticket_name,
         ticket_price,
+        category_id,
         is_active,
         note
-      ) VALUES (?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         ticket_code,
         ticket_name,
         ticket_price,
+        category_id,
         is_active,
         note,
       ]
     );
 
-    res.json({ success: true, ticket_id: result.insertId, ticket_code, ticket_name });
+    res.json({
+      success: true,
+      ticket_id: result.insertId,
+      ticket_code,
+      ticket_name,
+      category_id,
+    });
   } catch (err) {
     console.error('新增 ticket 失敗', err);
     res.status(500).send('DB error');
@@ -936,10 +973,20 @@ app.get('/api/rental_equipment', async (req, res) => {
   try {
     conn = await pool.getConnection();
     const rows = await conn.query(`
-      SELECT rental_id, rental_code, rental_name, rental_price, is_active, note
-      FROM rental_equipment
-      ${activeOnly ? 'WHERE is_active = 1' : ''}
-      ORDER BY rental_id
+      SELECT
+        r.rental_id,
+        r.rental_code,
+        r.rental_name,
+        r.rental_price,
+        r.category_id,
+        rc.category_code,
+        rc.category_name,
+        r.is_active,
+        r.note
+      FROM rental_equipment r
+      LEFT JOIN rental_equipment_category rc ON rc.category_id = r.category_id
+      ${activeOnly ? 'WHERE r.is_active = 1' : ''}
+      ORDER BY r.rental_id
     `);
     res.json(rows);
   } catch (err) {
@@ -950,10 +997,29 @@ app.get('/api/rental_equipment', async (req, res) => {
   }
 });
 
+app.get('/api/rental_equipment_category', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(`
+      SELECT category_id, category_code, category_name
+      FROM rental_equipment_category
+      ORDER BY category_id
+    `);
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('rental_equipment_category DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/rental_equipment', async (req, res) => {
   const {
     rental_name,
     rental_price,
+    category_id,
     is_active,
     note,
   } = req.body;
@@ -972,19 +1038,27 @@ app.post('/api/rental_equipment', async (req, res) => {
         rental_code,
         rental_name,
         rental_price,
+        category_id,
         is_active,
         note
-      ) VALUES (?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?)`,
       [
         rental_code,
         rental_name,
         rental_price,
+        category_id,
         is_active,
         note,
       ]
     );
 
-    res.json({ success: true, rental_id: result.insertId, rental_code, rental_name });
+    res.json({
+      success: true,
+      rental_id: result.insertId,
+      rental_code,
+      rental_name,
+      category_id,
+    });
   } catch (err) {
     console.error('新增 rental_equipment 失敗', err);
     res.status(500).send('rental_equipment DB error');

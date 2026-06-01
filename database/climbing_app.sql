@@ -235,7 +235,7 @@ CREATE TABLE `product` (
   UNIQUE KEY `product_code` (`product_code`),
   KEY `fk_product_category` (`category_id`),
   CONSTRAINT `fk_product_category` FOREIGN KEY (`category_id`) REFERENCES `product_category` (`category_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='商品價格表';
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='商品價格表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -246,7 +246,11 @@ LOCK TABLES `product` WRITE;
 /*!40000 ALTER TABLE `product` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `product` VALUES
-(1,1,'PROD001','白貼',0.00,0,1,NULL,'2026-05-25 03:48:54','2026-06-01 02:57:41');
+(1,1,'PROD001','白貼',0.00,0,1,NULL,'2026-05-25 03:48:54','2026-06-01 02:57:41'),
+(2,2,'TK0002','月票',1500.00,9999,1,'','2026-06-01 08:07:40','2026-06-01 08:07:40'),
+(3,2,'TK0003','季票',4200.00,9999,1,'','2026-06-01 08:08:33','2026-06-01 08:08:33'),
+(4,2,'TK0004','半年票',8000.00,9999,1,'','2026-06-01 08:08:56','2026-06-01 08:08:56'),
+(6,2,'TK0005','年票',15000.00,9999,1,'','2026-06-01 08:09:45','2026-06-01 08:09:45');
 /*!40000 ALTER TABLE `product` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -291,6 +295,7 @@ DROP TABLE IF EXISTS `rental_equipment`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `rental_equipment` (
   `rental_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '租借商品ID',
+  `category_id` int(11) NOT NULL,
   `rental_code` varchar(50) NOT NULL COMMENT '租借商品代碼',
   `rental_name` varchar(100) NOT NULL COMMENT '租借商品名稱',
   `rental_price` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '租借價格',
@@ -299,7 +304,9 @@ CREATE TABLE `rental_equipment` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
   PRIMARY KEY (`rental_id`),
-  UNIQUE KEY `rental_code` (`rental_code`)
+  UNIQUE KEY `rental_code` (`rental_code`),
+  KEY `fk_rental_equipment_category` (`category_id`),
+  CONSTRAINT `fk_rental_equipment_category` FOREIGN KEY (`category_id`) REFERENCES `ticket_category` (`category_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='裝備租借價格表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -311,13 +318,43 @@ LOCK TABLES `rental_equipment` WRITE;
 /*!40000 ALTER TABLE `rental_equipment` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `rental_equipment` VALUES
-(1,'REN0001','岩鞋',20.00,1,NULL,'2026-05-21 10:57:27','2026-05-25 03:52:48'),
-(2,'REN0002','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-05-25 03:52:49'),
-(3,'REN0003','吊帶',0.00,0,NULL,'2026-05-21 10:57:27','2026-05-22 10:02:04'),
-(4,'REN0004','粉塊',0.00,0,NULL,'2026-05-21 10:57:27','2026-05-22 10:02:02'),
-(5,'REN0005','粉袋',0.00,0,NULL,'2026-05-21 10:57:27','2026-05-22 10:02:02'),
-(6,'REN0006','岩盔',50.00,0,'','2026-05-22 03:03:22','2026-05-22 10:02:03');
+(1,2,'REN0001','岩鞋',20.00,1,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
+(2,1,'REN0002','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
+(3,1,'REN0003','吊帶',0.00,0,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
+(4,2,'REN0004','粉塊',0.00,0,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
+(5,2,'REN0005','粉袋',0.00,0,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
+(6,1,'REN0006','岩盔',50.00,0,'','2026-05-22 03:03:22','2026-06-01 08:24:10');
 /*!40000 ALTER TABLE `rental_equipment` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `rental_equipment_category`
+--
+
+DROP TABLE IF EXISTS `rental_equipment_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `rental_equipment_category` (
+  `category_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '租借裝備分類ID',
+  `category_code` varchar(50) NOT NULL COMMENT '租借裝備分類代碼',
+  `category_name` varchar(100) NOT NULL COMMENT '租借裝備分類名稱',
+  PRIMARY KEY (`category_id`),
+  UNIQUE KEY `category_code` (`category_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `rental_equipment_category`
+--
+
+LOCK TABLES `rental_equipment_category` WRITE;
+/*!40000 ALTER TABLE `rental_equipment_category` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `rental_equipment_category` VALUES
+(1,'CATE0001','上攀'),
+(2,'CATE0002','抱石');
+/*!40000 ALTER TABLE `rental_equipment_category` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
 
@@ -460,6 +497,7 @@ DROP TABLE IF EXISTS `ticket`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `ticket` (
   `ticket_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '票種ID',
+  `category_id` int(11) NOT NULL,
   `ticket_code` varchar(50) NOT NULL COMMENT '票種代碼',
   `ticket_name` varchar(100) NOT NULL COMMENT '票種名稱',
   `ticket_price` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '票價',
@@ -468,7 +506,9 @@ CREATE TABLE `ticket` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
   PRIMARY KEY (`ticket_id`),
-  UNIQUE KEY `ticket_code` (`ticket_code`)
+  UNIQUE KEY `ticket_code` (`ticket_code`),
+  KEY `fk_ticket_category` (`category_id`),
+  CONSTRAINT `fk_ticket_category` FOREIGN KEY (`category_id`) REFERENCES `ticket_category` (`category_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='票種與票價表';
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -480,16 +520,47 @@ LOCK TABLES `ticket` WRITE;
 /*!40000 ALTER TABLE `ticket` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `ticket` VALUES
-(1,'TK0001','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-05-25 03:52:46'),
-(2,'TK0002','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-25 03:52:47'),
-(3,'TK0003','假日單次',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:19'),
-(4,'TK0004','星光票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:20'),
-(5,'TK0005','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:21'),
-(6,'TK0006','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:21'),
-(7,'TK0007','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:22'),
-(8,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-05-27 07:30:23'),
-(9,'TK0009','公司票',200.00,1,'','2026-05-22 02:59:39','2026-05-27 07:30:23');
+(1,1,'TK0001','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(2,1,'TK0002','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(3,1,'TK0003','假日單次',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(4,1,'TK0004','星光票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(5,3,'TK0005','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(6,2,'TK0006','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(7,2,'TK0007','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(8,2,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
+(9,2,'TK0009','公司票',200.00,1,'','2026-05-22 02:59:39','2026-06-01 08:06:30');
 /*!40000 ALTER TABLE `ticket` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `ticket_category`
+--
+
+DROP TABLE IF EXISTS `ticket_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ticket_category` (
+  `category_id` int(11) NOT NULL AUTO_INCREMENT COMMENT '票種分類ID',
+  `category_code` varchar(50) NOT NULL COMMENT '票種分類代碼',
+  `category_name` varchar(100) NOT NULL COMMENT '票種分類名稱',
+  PRIMARY KEY (`category_id`),
+  UNIQUE KEY `category_code` (`category_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `ticket_category`
+--
+
+LOCK TABLES `ticket_category` WRITE;
+/*!40000 ALTER TABLE `ticket_category` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `ticket_category` VALUES
+(1,'CATE0001','單次票'),
+(2,'CATE0002','多元票'),
+(3,'CATE0003','長期票');
+/*!40000 ALTER TABLE `ticket_category` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
 
@@ -537,4 +608,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-06-01 11:21:07
+-- Dump completed on 2026-06-01 16:29:30
