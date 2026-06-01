@@ -82,6 +82,63 @@ app.post('/api/staff/login', async (req, res) => {
   }
 });
 
+app.post('/api/staff/:eid/change-password', async (req, res) => {
+  const staffId = Number(req.params.eid);
+  const currentPassword = String(req.body.current_password ?? '');
+  const newPassword = String(req.body.new_password ?? '');
+
+  if (!staffId) {
+    return res.status(400).send('無效的員工編號');
+  }
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).send('請輸入目前密碼與新密碼');
+  }
+
+  if (currentPassword === newPassword) {
+    return res.status(400).send('新密碼不可與目前密碼相同');
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT eid, password, is_active
+       FROM staff
+       WHERE eid = ?`,
+      [staffId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).send('找不到員工帳號');
+    }
+
+    const staff = rows[0];
+
+    if (Number(staff.is_active) !== 1) {
+      return res.status(403).send('此帳號已停用');
+    }
+
+    if (String(staff.password) !== currentPassword) {
+      return res.status(401).send('目前密碼輸入錯誤');
+    }
+
+    await conn.query(
+      `UPDATE staff
+       SET password = ?
+       WHERE eid = ?`,
+      [newPassword, staffId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('change password error', err);
+    res.status(500).send('change password DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.get('/api/staff/:eid', async (req, res) => {
   const { eid } = req.params;
 

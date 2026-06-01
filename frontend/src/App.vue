@@ -63,9 +63,20 @@
         </div>
       </div>
 
-      <div v-if="currentStaff" class="staff-profile">
-        <div class="staff-profile-card">
-          <p class="staff-profile-title">目前登入</p>
+      <div v-if="currentStaff" ref="profileMenu" class="staff-profile">
+        <div v-if="isProfileMenuOpen" class="staff-profile-menu">
+          <div class="staff-profile-menu-actions">
+            <button type="button" class="profile-menu-button profile-menu-button--wide" @click="openChangePasswordConfirm">
+              更改密碼
+            </button>
+            <button type="button" class="profile-menu-button profile-menu-button--wide profile-menu-button--danger" @click="logout">
+              登出
+            </button>
+          </div>
+        </div>
+
+        <button type="button" class="staff-profile-card staff-profile-trigger" @click.stop="toggleProfileMenu">
+          <p class="staff-profile-title">登入帳號</p>
           <p class="staff-profile-line">
             {{ currentStaff.employee_id }}
             <span class="staff-profile-separator">|</span>
@@ -73,9 +84,6 @@
             <span class="staff-profile-separator">|</span>
             {{ currentStaff.employee_title || '未設定職稱' }}
           </p>
-        </div>
-        <button type="button" class="logout-button" @click="logout">
-          登出
         </button>
       </div>
     </nav>
@@ -83,10 +91,85 @@
     <main class="main-content">
       <router-view />
     </main>
+
+    <div
+      v-if="activeProfilePanel"
+      class="profile-dialog-overlay"
+      @click.self="closePasswordDialog"
+    >
+      <div class="profile-dialog">
+        <div class="profile-dialog-header">
+          <h3 class="profile-dialog-title">
+            {{ activeProfilePanel === 'confirm' ? '確認目前密碼' : '修改密碼' }}
+          </h3>
+          <button
+            type="button"
+            class="profile-dialog-close"
+            aria-label="關閉修改密碼視窗"
+            @click="closePasswordDialog"
+          >
+            ×
+          </button>
+        </div>
+
+        <div v-if="activeProfilePanel === 'confirm'" class="staff-profile-panel">
+          <input
+            v-model.trim="currentPasswordConfirm"
+            class="staff-profile-input"
+            type="password"
+            placeholder="請輸入目前密碼"
+          >
+          <div class="staff-profile-actions">
+            <button type="button" class="profile-menu-button profile-menu-button--ghost" @click="closePasswordDialog">
+              取消
+            </button>
+            <button type="button" class="profile-menu-button" @click="confirmCurrentPassword">
+              下一步
+            </button>
+          </div>
+        </div>
+
+        <div v-else class="staff-profile-panel">
+          <input
+            v-model.trim="passwordForm.newPassword"
+            class="staff-profile-input"
+            type="password"
+            placeholder="請輸入新密碼"
+          >
+          <input
+            v-model.trim="passwordForm.confirmPassword"
+            class="staff-profile-input"
+            type="password"
+            placeholder="請再次輸入新密碼"
+          >
+          <div class="staff-profile-actions">
+            <button type="button" class="profile-menu-button profile-menu-button--ghost" @click="activeProfilePanel = 'confirm'">
+              返回
+            </button>
+            <button
+              type="button"
+              class="profile-menu-button"
+              :disabled="isPasswordSubmitting"
+              @click="submitPasswordChange"
+            >
+              {{ isPasswordSubmitting ? '送出中...' : '確認修改' }}
+            </button>
+          </div>
+        </div>
+
+        <p v-if="profileErrorMsg" class="staff-profile-feedback staff-profile-feedback--error">
+          {{ profileErrorMsg }}
+        </p>
+        <p v-if="profileSuccessMsg" class="staff-profile-feedback staff-profile-feedback--success">
+          {{ profileSuccessMsg }}
+        </p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script>
+import axios from 'axios'
 import { RouterLink } from 'vue-router'
 import { canAccessPermission, clearStoredAuth, getStoredAuth } from './utils/auth'
 
@@ -142,14 +225,27 @@ export default {
       navItems,
       navGroups,
       currentStaff: null,
+      isProfileMenuOpen: false,
+      activeProfilePanel: null,
+      currentPasswordConfirm: '',
+      passwordForm: {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      },
+      profileErrorMsg: '',
+      profileSuccessMsg: '',
+      isPasswordSubmitting: false,
     }
   },
   mounted() {
     this.refreshAuthState()
     window.addEventListener('storage', this.refreshAuthState)
+    document.addEventListener('click', this.handleDocumentClick)
   },
   beforeUnmount() {
     window.removeEventListener('storage', this.refreshAuthState)
+    document.removeEventListener('click', this.handleDocumentClick)
   },
   watch: {
     $route() {
@@ -157,6 +253,17 @@ export default {
     },
   },
   methods: {
+    handleDocumentClick(event) {
+      if (!this.isProfileMenuOpen) {
+        return
+      }
+
+      if (this.$refs.profileMenu?.contains(event.target)) {
+        return
+      }
+
+      this.closeProfileMenu()
+    },
     toggleGroup(groupKey) {
       this.expandedGroups[groupKey] = !this.expandedGroups[groupKey]
     },
@@ -185,9 +292,82 @@ export default {
         !this.isAccessible(item) ? 'nav-link--disabled' : '',
       ]
     },
+    toggleProfileMenu() {
+      this.isProfileMenuOpen = !this.isProfileMenuOpen
+    },
+    closeProfileMenu() {
+      this.isProfileMenuOpen = false
+    },
+    resetPasswordDialog() {
+      this.activeProfilePanel = null
+      this.currentPasswordConfirm = ''
+      this.passwordForm = {
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }
+      this.profileErrorMsg = ''
+      this.profileSuccessMsg = ''
+      this.isPasswordSubmitting = false
+    },
+    openChangePasswordConfirm() {
+      this.closeProfileMenu()
+      this.resetPasswordDialog()
+      this.activeProfilePanel = 'confirm'
+    },
+    closePasswordDialog() {
+      this.resetPasswordDialog()
+    },
+    confirmCurrentPassword() {
+      if (!this.currentPasswordConfirm) {
+        this.profileErrorMsg = '請先輸入目前密碼確認。'
+        return
+      }
+
+      this.passwordForm.currentPassword = this.currentPasswordConfirm
+      this.currentPasswordConfirm = ''
+      this.activeProfilePanel = 'change-password'
+      this.profileErrorMsg = ''
+      this.profileSuccessMsg = ''
+    },
+    async submitPasswordChange() {
+      if (!this.currentStaff?.eid) {
+        this.profileErrorMsg = '找不到登入帳號資訊，請重新登入。'
+        return
+      }
+
+      if (!this.passwordForm.currentPassword || !this.passwordForm.newPassword || !this.passwordForm.confirmPassword) {
+        this.profileErrorMsg = '請完整輸入目前密碼與新密碼。'
+        return
+      }
+
+      if (this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
+        this.profileErrorMsg = '新密碼與確認新密碼不一致。'
+        return
+      }
+
+      this.profileErrorMsg = ''
+      this.profileSuccessMsg = ''
+      this.isPasswordSubmitting = true
+
+      try {
+        await axios.post(`/api/staff/${this.currentStaff.eid}/change-password`, {
+          current_password: this.passwordForm.currentPassword,
+          new_password: this.passwordForm.newPassword,
+        })
+
+        this.closePasswordDialog()
+      } catch (error) {
+        this.profileErrorMsg = error.response?.data || '修改密碼失敗，請稍後再試。'
+      } finally {
+        this.isPasswordSubmitting = false
+      }
+    },
     logout() {
       clearStoredAuth()
       this.currentStaff = null
+      this.closeProfileMenu()
+      this.closePasswordDialog()
       this.$router.push('/login')
     },
   },
@@ -241,11 +421,11 @@ textarea {
 }
 
 .side-nav--with-profile {
-  padding-bottom: 148px;
+  padding-bottom: 100px;
 }
 
 .side-nav--collapsed.side-nav--with-profile {
-  padding-bottom: 148px;
+  padding-bottom: 100px;
 }
 
 .brand-button {
@@ -419,12 +599,20 @@ textarea {
   pointer-events: auto;
 }
 
+.staff-profile-trigger {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
 .staff-profile-card p {
   margin: 0;
 }
 
 .staff-profile-title {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   color: #5f7388;
   font-size: 12px;
   letter-spacing: 0.08em;
@@ -445,15 +633,130 @@ textarea {
   color: #7b8da0;
 }
 
-.logout-button {
-  width: 100%;
-  padding: 10px 12px;
+.staff-profile-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 12px);
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid rgba(32, 52, 74, 0.08);
+  box-shadow: 0 18px 42px rgba(32, 52, 74, 0.18);
+  pointer-events: auto;
+}
+
+.staff-profile-menu-actions,
+.staff-profile-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.staff-profile-panel-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #20344a;
+}
+
+.staff-profile-input {
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d6dde7;
+  border-radius: 12px;
+  background: #f8fbfe;
+}
+
+.staff-profile-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.profile-menu-button {
+  min-height: 36px;
+  padding: 0 14px;
   border: 0;
   border-radius: 12px;
   background: #20344a;
   color: #fff;
   cursor: pointer;
-  pointer-events: auto;
+  font-size: 14px;
+}
+
+.profile-menu-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.profile-menu-button--wide {
+  width: 100%;
+}
+
+.profile-menu-button--ghost {
+  background: #e9f0f6;
+  color: #20344a;
+}
+
+.profile-menu-button--danger {
+  background: #d45555;
+}
+
+.profile-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(15, 24, 34, 0.36);
+}
+
+.profile-dialog {
+  width: min(420px, 100%);
+  padding: 20px;
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: 0 20px 48px rgba(32, 52, 74, 0.22);
+}
+
+.profile-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.profile-dialog-title {
+  margin: 0;
+  font-size: 18px;
+  color: #20344a;
+}
+
+.profile-dialog-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d6dde7;
+  border-radius: 10px;
+  background: #fff;
+  color: #20344a;
+  cursor: pointer;
+}
+
+.staff-profile-feedback {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.staff-profile-feedback--error {
+  color: #c24343;
+}
+
+.staff-profile-feedback--success {
+  color: #21855b;
 }
 
 .main-content {
@@ -491,6 +794,11 @@ textarea {
     left: auto;
     right: auto;
     bottom: auto;
+  }
+
+  .staff-profile-menu {
+    position: static;
+    margin-bottom: 12px;
   }
 }
 </style>
