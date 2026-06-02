@@ -53,6 +53,12 @@
               class="entry-select-button"
               :class="{ selected: getItemQuantity(ticketQuantities, ticket.ticket_code) > 0 }"
             >
+              <span
+                v-if="getItemQuantity(ticketQuantities, ticket.ticket_code) > 0"
+                class="entry-select-check"
+              >
+                ✓
+              </span>
               <div class="entry-select-content">
                 <strong class="entry-select-name">{{ ticket.ticket_name }}</strong>
                 <span class="entry-select-price">${{ formatPrice(ticket.ticket_price) }}</span>
@@ -90,6 +96,12 @@
               class="entry-select-button compact"
               :class="{ selected: getItemQuantity(equipmentQuantities, item.rental_code) > 0 }"
             >
+              <span
+                v-if="getItemQuantity(equipmentQuantities, item.rental_code) > 0"
+                class="entry-select-check"
+              >
+                ✓
+              </span>
               <div class="entry-select-content">
                 <strong class="entry-select-name">{{ item.rental_name }}</strong>
                 <span class="entry-select-price">${{ formatPrice(item.rental_price) }}</span>
@@ -127,6 +139,12 @@
               class="entry-select-button compact"
               :class="{ selected: getItemQuantity(productQuantities, product.product_code) > 0 }"
             >
+              <span
+                v-if="getItemQuantity(productQuantities, product.product_code) > 0"
+                class="entry-select-check"
+              >
+                ✓
+              </span>
               <div class="entry-select-content">
                 <strong class="entry-select-name">{{ product.product_name }}</strong>
                 <span class="entry-select-price">${{ formatPrice(product.product_price) }}</span>
@@ -160,19 +178,19 @@
 
         <section class="checkout-panel">
           <div class="checkout-member-card">
-            <div class="panel-title">會員資訊</div>
+            <div class="panel-title">會員資料</div>
             <div class="member-info-card">
-              <div class="member-code-row">
-                <span class="member-code-label">會員編號</span>
-                <strong class="member-code-value">{{ member_code || '-' }}</strong>
+              <div class="member-info-row">
+                <span class="member-info-label">會員編號</span>
+                <strong class="member-info-value">{{ member_code || '-' }}</strong>
               </div>
-              <div class="member-meta-row">
-                <template v-if="selectedMember">
-                  {{ selectedMember.name || '-' }} | {{ selectedMember.phone || '-' }} | {{ memberPassSummary }}
-                </template>
-                <template v-else>
-                  請先搜尋並選擇會員。
-                </template>
+              <div class="member-info-row">
+                <span class="member-info-label">姓名</span>
+                <strong class="member-info-value">{{ selectedMember?.name || '-' }}</strong>
+              </div>
+              <div class="member-info-row">
+                <span class="member-info-label">手機</span>
+                <strong class="member-info-value">{{ selectedMember?.phone || '-' }}</strong>
               </div>
             </div>
           </div>
@@ -1101,14 +1119,15 @@ export default {
 }
 
 .entry-picker-panel {
-  max-height: 50vh;
+  height: 50vh;
   overflow: auto;
   padding-right: 4px;
+  padding-bottom: 8px;
 }
 
 .entry-button-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -1125,6 +1144,7 @@ export default {
 }
 
 .entry-select-button {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1135,6 +1155,22 @@ export default {
 .entry-select-button.selected {
   border-color: rgba(47, 122, 83, 0.36);
   box-shadow: inset 0 0 0 1px rgba(47, 122, 83, 0.16);
+}
+
+.entry-select-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
 }
 
 .entry-select-content {
@@ -1159,6 +1195,8 @@ export default {
   align-items: center;
   gap: 10px;
   margin-top: auto;
+  justify-content: flex-end;
+  align-self: flex-end;
 }
 
 .quantity-button {
@@ -1200,26 +1238,29 @@ export default {
 .member-info-card {
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
-.member-code-row {
+.member-info-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(34, 66, 49, 0.08);
 }
 
-.member-code-label {
+.member-info-row:last-child {
+  border-bottom: 0;
+}
+
+.member-info-label {
   font-size: 14px;
   font-weight: 700;
+  color: var(--text-soft);
 }
 
-.member-code-value {
+.member-info-value {
   font-size: 16px;
-}
-
-.member-meta-row {
   word-break: break-word;
 }
 
