@@ -139,12 +139,17 @@ DROP TABLE IF EXISTS `member_visits`;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `member_visits` (
   `visit_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `order_id` bigint(20) unsigned NOT NULL,
   `member_id` bigint(20) NOT NULL,
-  `checkin_time` datetime NOT NULL,
-  `checkout_time` datetime DEFAULT NULL,
-  `visit_type` varchar(50) DEFAULT NULL,
-  `created_at` datetime DEFAULT current_timestamp(),
-  PRIMARY KEY (`visit_id`)
+  `ticket_id` int(11) NOT NULL,
+  `checkin_time` datetime NOT NULL COMMENT '入場時間',
+  `checkout_time` datetime DEFAULT NULL COMMENT '離場時間',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
+  PRIMARY KEY (`visit_id`),
+  KEY `idx_order_id` (`order_id`),
+  KEY `idx_ticket_id` (`ticket_id`),
+  CONSTRAINT `fk_visit_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`),
+  CONSTRAINT `fk_visit_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `ticket` (`ticket_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -155,9 +160,6 @@ CREATE TABLE `member_visits` (
 LOCK TABLES `member_visits` WRITE;
 /*!40000 ALTER TABLE `member_visits` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `member_visits` VALUES
-(1,1,'2026-05-14 21:57:37',NULL,'TK0005','2026-05-14 21:57:37'),
-(2,1,'2026-05-26 12:14:13',NULL,'TK0001','2026-05-26 12:14:13');
 /*!40000 ALTER TABLE `member_visits` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -210,6 +212,83 @@ INSERT INTO `members` VALUES
 (3,'W000001','王小美','TW','D211111111','0923456789','1995-08-12',2,'桃園市中壢區XX路100號','mei@example.com','王大美','0966677788','台南市安南區xxx','母親','U4hf64897654xxxxxxx',1,'好玩',NULL,'2026-05-15 15:09:59','2026-05-21 16:29:07'),
 (5,'M000002','asd','asd','D123456789','0911111111','2026-05-12',1,'wesfg','123ergdr@gmail.com','24134wewer','0911111111','dfgdfg','sdfsdf','sdfsdf',1,'',NULL,'2026-05-21 16:44:48','2026-05-21 16:44:48');
 /*!40000 ALTER TABLE `members` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `order_items`
+--
+
+DROP TABLE IF EXISTS `order_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `order_items` (
+  `order_item_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '訂單明細ID',
+  `order_id` bigint(20) unsigned NOT NULL COMMENT '訂單ID',
+  `item_type` tinyint(4) NOT NULL COMMENT '\n    1=票券\n    2=裝備租借\n    3=商品\n    4=長期票',
+  `item_id` bigint(20) unsigned NOT NULL COMMENT '來源資料ID',
+  `item_name` varchar(255) NOT NULL COMMENT '項目名稱',
+  `unit_price` decimal(10,2) NOT NULL COMMENT '單價',
+  `quantity` int(11) NOT NULL DEFAULT 1 COMMENT '數量',
+  `subtotal` decimal(10,2) NOT NULL COMMENT '小計',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
+  PRIMARY KEY (`order_item_id`),
+  KEY `idx_order_id` (`order_id`),
+  CONSTRAINT `fk_order_items_order` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='訂單明細表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `order_items`
+--
+
+LOCK TABLES `order_items` WRITE;
+/*!40000 ALTER TABLE `order_items` DISABLE KEYS */;
+set autocommit=0;
+/*!40000 ALTER TABLE `order_items` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `orders`
+--
+
+DROP TABLE IF EXISTS `orders`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `orders` (
+  `order_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '訂單ID',
+  `order_no` varchar(30) NOT NULL COMMENT '訂單編號',
+  `member_id` bigint(20) NOT NULL COMMENT '會員ID',
+  `activity_id` bigint(20) unsigned DEFAULT NULL COMMENT '活動ID',
+  `subtotal_amount` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '原始金額',
+  `discount_amount` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '折扣金額',
+  `total_amount` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '實收金額',
+  `payment_method` tinyint(4) NOT NULL COMMENT '\n    1=現金\n    2=轉帳\n    3=信用卡\n    4=Line Pay',
+  `invoice_type` tinyint(4) NOT NULL DEFAULT 0 COMMENT '\n    0=不開立\n    1=統一編號\n    2=手機載具\n    3=捐贈碼 ',
+  `tax_id` varchar(20) DEFAULT NULL COMMENT '統一編號',
+  `carrier_code` varchar(100) DEFAULT NULL COMMENT '載具條碼',
+  `donate_code` varchar(20) DEFAULT NULL COMMENT '捐贈碼',
+  `status` tinyint(4) NOT NULL DEFAULT 1 COMMENT '\n    1=已付款\n    2=已退款\n    3=已取消',
+  `note` varchar(500) DEFAULT NULL COMMENT '備註',
+  `created_by` bigint(20) unsigned DEFAULT NULL COMMENT '建立員工ID',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '建立時間',
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新時間',
+  PRIMARY KEY (`order_id`),
+  UNIQUE KEY `uk_order_no` (`order_no`),
+  KEY `fk_order_member` (`member_id`),
+  CONSTRAINT `fk_order_member` FOREIGN KEY (`member_id`) REFERENCES `members` (`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='訂單資訊表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `orders`
+--
+
+LOCK TABLES `orders` WRITE;
+/*!40000 ALTER TABLE `orders` DISABLE KEYS */;
+set autocommit=0;
+/*!40000 ALTER TABLE `orders` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
 
@@ -592,9 +671,6 @@ CREATE TABLE `visit_rental_equipment` (
 LOCK TABLES `visit_rental_equipment` WRITE;
 /*!40000 ALTER TABLE `visit_rental_equipment` DISABLE KEYS */;
 set autocommit=0;
-INSERT INTO `visit_rental_equipment` VALUES
-(1,1,1,50.00,'2026-05-22 13:58:14'),
-(2,2,1,20.00,'2026-05-26 12:14:13');
 /*!40000 ALTER TABLE `visit_rental_equipment` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -608,4 +684,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-06-01 16:29:30
+-- Dump completed on 2026-06-02 15:24:03

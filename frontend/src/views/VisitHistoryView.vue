@@ -278,7 +278,7 @@ const createFilters = () => ({
 const normalizeText = (value) => String(value ?? '').trim().toLowerCase()
 const normalizeDigits = (value) => String(value ?? '').replace(/\D/g, '')
 const createDisplayOrderNumber = (visit) =>
-  `OD${String(visit.visit_id ?? '').padStart(8, '0')}`
+  String(visit.order_no ?? '').trim() || `OD${String(visit.visit_id ?? '').padStart(8, '0')}`
 
 export default {
   beforeCreate() {

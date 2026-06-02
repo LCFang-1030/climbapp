@@ -1395,16 +1395,24 @@ app.get('/api/member_visits', async (req, res) => {
     const rows = await conn.query(
       `SELECT
         mv.visit_id,
+        mv.order_id,
         mv.member_id,
         m.member_code,
         m.name AS member_name,
         m.phone,
-        mv.visit_type,
+        t.ticket_code AS visit_type,
+        t.ticket_name,
         mv.checkin_time,
         mv.checkout_time,
-        mv.created_at
+        mv.created_at,
+        o.order_no,
+        o.total_amount,
+        o.payment_method,
+        o.invoice_type
       FROM member_visits mv
       INNER JOIN members m ON m.member_id = mv.member_id
+      LEFT JOIN ticket t ON t.ticket_id = mv.ticket_id
+      LEFT JOIN orders o ON o.order_id = mv.order_id
       ${todayOnly ? 'WHERE DATE(mv.checkin_time) = CURDATE()' : ''}
       ORDER BY mv.checkin_time DESC, mv.visit_id DESC`
     );
@@ -1448,8 +1456,14 @@ app.get('/api/member_visits/:visitId/rentals', async (req, res) => {
 });
 
 app.post('/api/member_visits', async (req, res) => {
+  const timestampPart = (value) => String(value).padStart(2, '0');
+  const createOrderNo = (date = new Date()) => (
+    `${date.getFullYear()}${timestampPart(date.getMonth() + 1)}${timestampPart(date.getDate())}`
+    + `${timestampPart(date.getHours())}${timestampPart(date.getMinutes())}${timestampPart(date.getSeconds())}`
+  );
+  const isDuplicateEntryError = (error) => Number(error?.errno) === 1062 || error?.code === 'ER_DUP_ENTRY';
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const memberId = Number(req.body.member_id);
-  const ticketCode = String(req.body.ticket_code ?? '').trim();
   const normalizeQuantityItems = (items, codeKey) => (
     Array.isArray(items)
       ? items
@@ -1460,43 +1474,45 @@ app.post('/api/member_visits', async (req, res) => {
         .filter((item) => item[codeKey] && item.quantity > 0)
       : []
   );
-  const collapseCodesToItems = (codes, codeKey) => {
-    const quantityMap = new Map();
-
-    codes.forEach((code) => {
-      const normalizedCode = String(code ?? '').trim();
-
-      if (!normalizedCode) {
-        return;
-      }
-
-      quantityMap.set(normalizedCode, Number(quantityMap.get(normalizedCode) ?? 0) + 1);
-    });
-
-    return Array.from(quantityMap.entries()).map(([code, quantity]) => ({
-      [codeKey]: code,
-      quantity,
-    }));
-  };
   const ticketItems = normalizeQuantityItems(req.body.ticket_items, 'ticket_code');
-  const rentalCodes = Array.isArray(req.body.rental_codes)
-    ? req.body.rental_codes.map((code) => String(code ?? '').trim()).filter(Boolean)
-    : [];
   const rentalItems = normalizeQuantityItems(req.body.rental_items, 'rental_code');
   const productItems = normalizeQuantityItems(req.body.product_items, 'product_code');
-  const normalizedTicketItems = ticketItems.length
-    ? ticketItems
-    : (ticketCode ? [{ ticket_code: ticketCode, quantity: 1 }] : []);
-  const normalizedRentalItems = rentalItems.length
-    ? rentalItems
-    : collapseCodesToItems(rentalCodes, 'rental_code');
+  const paymentMethod = Number(req.body.payment_method);
+  const invoiceType = Number(req.body.invoice_type ?? 0);
+  const discountAmountInput = Number(req.body.discount_amount ?? 0);
+  const activityIdInput = Number(req.body.activity_id ?? 0);
+  const taxId = String(req.body.tax_id ?? '').trim();
+  const carrierCode = String(req.body.carrier_code ?? '').trim();
+  const donateCode = String(req.body.donate_code ?? '').trim();
+  const note = String(req.body.note ?? '').trim();
+  const createdBy = Number(req.body.created_by ?? 0) || null;
 
   if (!memberId) {
     return res.status(400).json({ success: false, message: 'member_id is required' });
   }
 
-  if (!normalizedTicketItems.length) {
-    return res.status(400).json({ success: false, message: 'ticket_code is required' });
+  if (!ticketItems.length) {
+    return res.status(400).json({ success: false, message: 'ticket_items is required' });
+  }
+
+  if (![1, 2, 3, 4].includes(paymentMethod)) {
+    return res.status(400).json({ success: false, message: 'payment_method is invalid' });
+  }
+
+  if (![0, 1, 2, 3].includes(invoiceType)) {
+    return res.status(400).json({ success: false, message: 'invoice_type is invalid' });
+  }
+
+  if (invoiceType === 1 && !taxId) {
+    return res.status(400).json({ success: false, message: 'tax_id is required' });
+  }
+
+  if (invoiceType === 2 && !carrierCode) {
+    return res.status(400).json({ success: false, message: 'carrier_code is required' });
+  }
+
+  if (invoiceType === 3 && !donateCode) {
+    return res.status(400).json({ success: false, message: 'donate_code is required' });
   }
 
   let conn;
@@ -1514,10 +1530,10 @@ app.post('/api/member_visits', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Member not found' });
     }
 
-    const uniqueTicketCodes = [...new Set(normalizedTicketItems.map((item) => item.ticket_code))];
+    const uniqueTicketCodes = [...new Set(ticketItems.map((item) => item.ticket_code))];
     const ticketPlaceholders = uniqueTicketCodes.map(() => '?').join(', ');
     const ticketRows = await conn.query(
-      `SELECT ticket_id, ticket_code, ticket_name
+      `SELECT ticket_id, ticket_code, ticket_name, ticket_price
        FROM ticket
        WHERE ticket_code IN (${ticketPlaceholders}) AND is_active = 1`,
       uniqueTicketCodes
@@ -1529,11 +1545,11 @@ app.post('/api/member_visits', async (req, res) => {
     }
 
     let rentals = [];
-    if (normalizedRentalItems.length) {
-      const uniqueRentalCodes = [...new Set(normalizedRentalItems.map((item) => item.rental_code))];
+    if (rentalItems.length) {
+      const uniqueRentalCodes = [...new Set(rentalItems.map((item) => item.rental_code))];
       const placeholders = uniqueRentalCodes.map(() => '?').join(', ');
       rentals = await conn.query(
-        `SELECT rental_id, rental_code, rental_price
+        `SELECT rental_id, rental_code, rental_name, rental_price
          FROM rental_equipment
          WHERE rental_code IN (${placeholders}) AND is_active = 1`,
         uniqueRentalCodes
@@ -1545,49 +1561,190 @@ app.post('/api/member_visits', async (req, res) => {
       }
     }
 
-    const visitTypeSummary = normalizedTicketItems
-      .map((item) => {
-        const ticket = ticketRows.find((row) => row.ticket_code === item.ticket_code);
-        const label = ticket?.ticket_name ?? item.ticket_code;
-        return item.quantity > 1 ? `${label} x${item.quantity}` : label;
-      })
-      .join(' | ');
+    let products = [];
+    if (productItems.length) {
+      const uniqueProductCodes = [...new Set(productItems.map((item) => item.product_code))];
+      const placeholders = uniqueProductCodes.map(() => '?').join(', ');
+      products = await conn.query(
+        `SELECT product_id, product_code, product_name, product_price
+         FROM product
+         WHERE product_code IN (${placeholders}) AND is_active = 1`,
+        uniqueProductCodes
+      );
 
-    const visitResult = await conn.query(
-      `INSERT INTO member_visits (
-        member_id,
-        checkin_time,
-        visit_type
-      ) VALUES (?, NOW(), ?)`,
-      [memberId, visitTypeSummary]
-    );
+      if (products.length !== uniqueProductCodes.length) {
+        await conn.rollback();
+        return res.status(400).json({ success: false, message: 'Product not found or inactive' });
+      }
+    }
 
-    const visitId = Number(visitResult.insertId);
+    const ticketOrderItems = ticketItems.map((item) => {
+      const ticket = ticketRows.find((row) => row.ticket_code === item.ticket_code);
+      const unitPrice = Number(ticket?.ticket_price ?? 0);
+      return {
+        item_type: 1,
+        item_id: Number(ticket.ticket_id),
+        item_name: ticket.ticket_name,
+        unit_price: unitPrice,
+        quantity: Number(item.quantity),
+        subtotal: unitPrice * Number(item.quantity),
+      };
+    });
 
-    for (const rentalItem of normalizedRentalItems) {
-      const rental = rentals.find((item) => item.rental_code === rentalItem.rental_code);
+    const rentalOrderItems = rentalItems.map((item) => {
+      const rental = rentals.find((row) => row.rental_code === item.rental_code);
+      const unitPrice = Number(rental?.rental_price ?? 0);
+      return {
+        item_type: 2,
+        item_id: Number(rental.rental_id),
+        item_name: rental.rental_name,
+        unit_price: unitPrice,
+        quantity: Number(item.quantity),
+        subtotal: unitPrice * Number(item.quantity),
+      };
+    });
 
-      for (let index = 0; index < rentalItem.quantity; index += 1) {
-        await conn.query(
-          `INSERT INTO visit_rental_equipment (
-            visit_id,
-            rental_id,
-            rental_price
-          ) VALUES (?, ?, ?)`,
-          [visitId, rental.rental_id, Number(rental.rental_price ?? 0)]
+    const productOrderItems = productItems.map((item) => {
+      const product = products.find((row) => row.product_code === item.product_code);
+      const unitPrice = Number(product?.product_price ?? 0);
+      return {
+        item_type: 3,
+        item_id: Number(product.product_id),
+        item_name: product.product_name,
+        unit_price: unitPrice,
+        quantity: Number(item.quantity),
+        subtotal: unitPrice * Number(item.quantity),
+      };
+    });
+
+    const orderItems = [...ticketOrderItems, ...rentalOrderItems, ...productOrderItems];
+    const subtotalAmount = orderItems.reduce((total, item) => total + Number(item.subtotal ?? 0), 0);
+    const discountAmount = Math.min(Math.max(discountAmountInput, 0), subtotalAmount);
+    const totalAmount = Math.max(subtotalAmount - discountAmount, 0);
+    const activityId = activityIdInput > 0 ? activityIdInput : null;
+
+    let orderInsertResult = null;
+    let orderNo = '';
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      orderNo = createOrderNo();
+      try {
+        orderInsertResult = await conn.query(
+          `INSERT INTO orders (
+            order_no,
+            member_id,
+            activity_id,
+            subtotal_amount,
+            discount_amount,
+            total_amount,
+            payment_method,
+            invoice_type,
+            tax_id,
+            carrier_code,
+            donate_code,
+            status,
+            note,
+            created_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+          [
+            orderNo,
+            memberId,
+            activityId,
+            subtotalAmount,
+            discountAmount,
+            totalAmount,
+            paymentMethod,
+            invoiceType,
+            invoiceType === 1 ? taxId : null,
+            invoiceType === 2 ? carrierCode : null,
+            invoiceType === 3 ? donateCode : null,
+            note || null,
+            createdBy,
+          ]
         );
+        break;
+      } catch (error) {
+        if (!isDuplicateEntryError(error) || attempt === 2) {
+          throw error;
+        }
+        await wait(1000);
+      }
+    }
+
+    const orderId = Number(orderInsertResult.insertId);
+
+    for (const item of orderItems) {
+      await conn.query(
+        `INSERT INTO order_items (
+          order_id,
+          item_type,
+          item_id,
+          item_name,
+          unit_price,
+          quantity,
+          subtotal
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          orderId,
+          item.item_type,
+          item.item_id,
+          item.item_name,
+          item.unit_price,
+          item.quantity,
+          item.subtotal,
+        ]
+      );
+    }
+
+    const visitIds = [];
+    for (const ticketItem of ticketItems) {
+      const ticket = ticketRows.find((row) => row.ticket_code === ticketItem.ticket_code);
+      const ticketId = Number(ticket?.ticket_id ?? 0);
+
+      for (let index = 0; index < Number(ticketItem.quantity); index += 1) {
+        const visitResult = await conn.query(
+          `INSERT INTO member_visits (
+            order_id,
+            member_id,
+            ticket_id,
+            checkin_time
+          ) VALUES (?, ?, ?, NOW())`,
+          [orderId, memberId, ticketId]
+        );
+        visitIds.push(Number(visitResult.insertId));
+      }
+    }
+
+    const primaryVisitId = visitIds[0] ?? null;
+    if (primaryVisitId) {
+      for (const rentalItem of rentalItems) {
+        const rental = rentals.find((item) => item.rental_code === rentalItem.rental_code);
+
+        for (let index = 0; index < rentalItem.quantity; index += 1) {
+          await conn.query(
+            `INSERT INTO visit_rental_equipment (
+              visit_id,
+              rental_id,
+              rental_price
+            ) VALUES (?, ?, ?)`,
+            [primaryVisitId, rental.rental_id, Number(rental.rental_price ?? 0)]
+          );
+        }
       }
     }
 
     await conn.commit();
     res.json({
       success: true,
-      visit_id: visitId,
+      order_id: orderId,
+      order_no: orderNo,
+      visit_ids: visitIds,
       member_id: memberId,
-      ticket_code: normalizedTicketItems[0]?.ticket_code ?? ticketCode,
-      ticket_items: normalizedTicketItems,
-      rental_items: normalizedRentalItems,
+      ticket_items: ticketItems,
+      rental_items: rentalItems,
       product_items: productItems,
+      subtotal_amount: subtotalAmount,
+      discount_amount: discountAmount,
+      total_amount: totalAmount,
     });
   } catch (err) {
     if (conn) {
