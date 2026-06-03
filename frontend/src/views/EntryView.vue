@@ -192,6 +192,10 @@
                 <span class="member-info-label">手機</span>
                 <strong class="member-info-value">{{ selectedMember?.phone || '-' }}</strong>
               </div>
+              <div class="member-info-row">
+                <span class="member-info-label">票券狀態</span>
+                <strong class="member-info-value">{{ memberPassSummary }}</strong>
+              </div>
             </div>
           </div>
 
@@ -925,11 +929,13 @@ export default {
   display: flex;
   flex-direction: column;
   max-width: 100%;
+  height: calc(100vh - 64px);
   min-height: calc(100vh - 64px);
   padding: 12px 16px 16px;
   box-sizing: border-box;
   background: var(--entry-bg);
   color: var(--text-main);
+  overflow: hidden;
 }
 
 .entry-main-card,
@@ -945,7 +951,9 @@ export default {
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  height: 100%;
   padding: 16px 16px 0;
+  overflow: hidden;
 }
 
 .entry-hero {
@@ -1119,10 +1127,11 @@ export default {
 }
 
 .entry-picker-panel {
-  height: 50vh;
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   padding-right: 4px;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
 }
 
 .entry-button-list {
@@ -1139,7 +1148,7 @@ export default {
 .checkout-selection-card,
 .checkout-total-card {
   border: 1px solid rgba(34, 66, 49, 0.12);
-  border-radius: 20px;
+  border-radius: 25px;
   background: rgba(255, 255, 255, 0.97);
 }
 
@@ -1147,9 +1156,9 @@ export default {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  min-height: 150px;
-  padding: 20px;
+  justify-content: flex-start;
+  min-height: 118px;
+  padding: 18px 18px 14px;
 }
 
 .entry-select-button.selected {
@@ -1176,16 +1185,17 @@ export default {
 .entry-select-content {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  max-width: 80px;
 }
 
 .entry-select-name {
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.3;
 }
 
 .entry-select-price {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--accent-strong);
 }
@@ -1193,19 +1203,19 @@ export default {
 .quantity-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   margin-top: auto;
   justify-content: flex-end;
   align-self: flex-end;
 }
 
 .quantity-button {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: #e6f0e9;
   color: var(--accent-strong);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
 }
 
@@ -1216,7 +1226,7 @@ export default {
 .quantity-value {
   min-width: 24px;
   text-align: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
 }
 
@@ -1224,15 +1234,16 @@ export default {
   display: grid;
   grid-template-columns: 1fr 1.15fr 0.75fr;
   gap: 16px;
-  margin-top: 16px;
-  padding: 16px 0;
+  margin-top: 10px;
+  padding: 12px 0;
   border-top: 1px solid rgba(34, 66, 49, 0.1);
+  flex-shrink: 0;
 }
 
 .checkout-member-card,
 .checkout-selection-card,
 .checkout-total-card {
-  padding: 18px;
+  padding: 16px 18px;
 }
 
 .member-info-card {
@@ -1245,7 +1256,7 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0;
+  padding: 10px 0;
   border-bottom: 1px solid rgba(34, 66, 49, 0.08);
 }
 
@@ -1254,14 +1265,15 @@ export default {
 }
 
 .member-info-label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-soft);
 }
 
 .member-info-value {
-  font-size: 16px;
+  font-size: 15px;
   word-break: break-word;
+  text-align: right;
 }
 
 .selection-chip-list {
@@ -1525,6 +1537,9 @@ export default {
 @media (max-width: 720px) {
   .entry-page {
     padding: 12px;
+    height: auto;
+    min-height: calc(100vh - 64px);
+    overflow: auto;
   }
 
   .member-search,
