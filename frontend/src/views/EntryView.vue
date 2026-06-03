@@ -293,7 +293,7 @@
               </div>
 
               <div class="checkout-detail-scroll">
-                <section ref="activitySection" class="detail-section">
+                <section ref="activitySection" class="detail-section activity-section">
                   <div class="detail-section-header">
                     <h2>會員活動</h2>
                     <p>目前先支援單選一種活動。</p>
@@ -1322,7 +1322,6 @@ export default {
   flex-direction: column;
   min-height: 0;
   flex: 1;
-  padding-bottom: 150px;
   overflow: hidden;
 }
 
@@ -1361,15 +1360,20 @@ export default {
   gap: 18px;
   min-height: 0;
   flex: 1;
-  padding: 20px 0;
+  padding: 12px 0 0;
   overflow: hidden;
+  align-items: start;
+}
+
+.checkout-sidebar {
+  min-height: 0;
 }
 
 .sidebar-card {
-  height: 100%;
-  padding: 18px;
+  padding: 10px 16px;
   overflow: auto;
-  max-height: calc(100vh - 320px);
+  height: 46vh; 
+  max-height: 46vh;
 }
 
 .line-item-list {
@@ -1382,7 +1386,7 @@ export default {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid rgba(34, 66, 49, 0.08);
 }
 
@@ -1404,6 +1408,7 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow: hidden;
 }
 
 .checkout-nav {
@@ -1423,17 +1428,20 @@ export default {
 .checkout-detail-scroll {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+  flex: 0 0 auto;
+  height: 41vh;
+  max-height: 41vh;
   min-height: 0;
   overflow: auto;
-  max-height: calc(100vh - 320px);
   padding-right: 6px;
+  padding-bottom: 8px;
   scroll-behavior: smooth;
 }
 
 .detail-section,
 .invoice-input-card {
-  padding: 18px;
+  padding: 14px 16px;
 }
 
 .option-list {
@@ -1450,7 +1458,7 @@ export default {
   text-align: left;
   border-radius: 18px;
   background: #f7faf8;
-  padding: 18px;
+  padding: 16px 18px;
 }
 
 .option-card.selected {
@@ -1468,6 +1476,27 @@ export default {
   color: var(--text-soft);
 }
 
+.activity-section .detail-section-header h2 {
+  font-size: 22px;
+}
+
+.activity-section .detail-section-header p {
+  font-size: 14px;
+}
+
+.activity-section .option-card {
+  padding: 10px 14px;
+}
+
+.activity-section .option-card-title {
+  font-size: 18px;
+}
+
+.activity-section .option-card-subtitle {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
 .invoice-input-card {
   margin-top: 16px;
 }
@@ -1477,19 +1506,13 @@ export default {
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   gap: 16px;
   align-items: center;
-  position: fixed;
-  left: 16px;
-  right: 16px;
-  bottom: 16px;
-  transform: none;
-  width: auto;
-  max-width: none;
+  flex-shrink: 0;
+  margin-top: 12px;
   padding: 18px 22px;
   border: 1px solid rgba(34, 66, 49, 0.12);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 18px 40px rgba(24, 48, 34, 0.14);
-  z-index: 40;
   backdrop-filter: blur(10px);
 }
 
@@ -1509,7 +1532,6 @@ export default {
 
 .checkout-message {
   margin-top: 14px;
-  margin-bottom: 120px;
 }
 
 @media (max-width: 1100px) {
@@ -1530,7 +1552,6 @@ export default {
 
   .checkout-flow {
     overflow: visible;
-    padding-bottom: 220px;
   }
 }
 
@@ -1568,8 +1589,6 @@ export default {
   }
 
   .checkout-footer {
-    width: calc(100vw - 24px);
-    bottom: 12px;
     padding: 16px;
   }
 }
