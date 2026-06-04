@@ -92,7 +92,7 @@
                         :key="`${group.type}-${item.key}-label`"
                         class="price-ticket-name-cell"
                       >
-                        {{ item.ticketName }}
+                        {{ item.ticketName || '' }}
                       </td>
                     </tr>
                     <tr>
@@ -101,7 +101,7 @@
                         :key="`${group.type}-${item.key}-price`"
                         class="price-ticket-value-cell"
                       >
-                        ${{ formatCurrency(item.price) }}
+                        {{ item.ticketName ? `$${formatCurrency(item.price)}` : '' }}
                       </td>
                     </tr>
                   </template>
@@ -112,26 +112,43 @@
               </tbody>
             </table>
 
-            <table v-else class="price-table">
+            <table v-else class="price-table price-table--matrix">
               <thead>
                 <tr>
-                  <th>{{ currentPriceConfig.primaryLabel }}</th>
-                  <th>價格</th>
-                  <th>狀態</th>
+                  <th>類型</th>
+                  <th :colspan="currentMatrixColumnCount">價格</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in currentPriceRows" :key="row.key">
-                  <td>{{ row.primary }}</td>
-                  <td>${{ formatCurrency(row.price) }}</td>
-                  <td>{{ Number(row.is_active) === 1 ? '啟用中' : '停用中' }}</td>
-                </tr>
-                <tr v-if="!currentPriceRows.length">
-                  <td colspan="3" class="empty-row">
+                <template v-if="currentMatrixRows.length">
+                  <template v-for="group in currentMatrixRows" :key="group.type">
+                    <tr>
+                      <td :rowspan="2" class="price-type-cell">{{ group.type }}</td>
+                      <td
+                        v-for="item in group.items"
+                        :key="`${group.type}-${item.key}-label`"
+                        class="price-ticket-name-cell"
+                      >
+                        {{ item.ticketName }}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        v-for="item in group.items"
+                        :key="`${group.type}-${item.key}-price`"
+                        class="price-ticket-value-cell"
+                      >
+                        {{ item.ticketName ? `$${formatCurrency(item.price)}` : '' }}
+                      </td>
+                    </tr>
+                  </template>
+                </template>
+                <tr v-else>
+                  <td :colspan="currentMatrixColumnCount + 1" class="empty-row">
                     目前沒有可顯示的價格資料
                   </td>
                 </tr>
-              </tbody>
+             </tbody>
             </table>
           </div>
         </section>
@@ -551,16 +568,39 @@ export default {
 
       return []
     },
+    currentMatrixRows() {
+      if (this.activePriceTab === 'rental') {
+        return this.rentalPriceMatrixRows
+      }
+
+      if (this.activePriceTab === 'product') {
+        return this.productPriceMatrixRows
+      }
+
+      return []
+    },
+    currentMatrixColumnCount() {
+      if (this.activePriceTab === 'rental') {
+        return this.rentalMatrixColumnCount
+      }
+
+      if (this.activePriceTab === 'product') {
+        return this.productMatrixColumnCount
+      }
+
+      return this.ticketColumnCount
+    },
     ticketPriceMatrixRows() {
       return this.ticketPriceGroups.map((group) => ({
         type: group.type,
         items: group.source === 'productLongTerm'
           ? group.orderedLabels.map((label) => {
             const product = this.findLongTermProductByName(label)
+            const ticket = this.findLongTermTicketForProduct(product, label)
             return {
               key: label,
               ticketName: label,
-              price: Number(product?.product_price ?? 0),
+              price: Number(ticket?.ticket_price ?? product?.product_price ?? 0),
             }
           })
           : group.matchers.map((matcher, index) => {
@@ -628,12 +668,36 @@ export default {
         is_active: item.is_active,
       }))
     },
+    rentalPriceGroups() {
+      return this.groupItemsByCategoryName(this.rentals)
+    },
+    rentalMatrixColumnCount() {
+      return Math.max(...this.rentalPriceGroups.map((group) => group.items.length), 0)
+    },
+    rentalPriceMatrixRows() {
+      return this.rentalPriceGroups.map((group) => ({
+        type: group.categoryName,
+        items: this.padMatrixItems(group.items, this.rentalMatrixColumnCount, 'rental', 'rental_name', 'rental_price'),
+      }))
+    },
     productPriceRows() {
       return this.products.map((item) => ({
         key: item.product_id,
         primary: item.product_name,
         price: Number(item.product_price ?? 0),
         is_active: item.is_active,
+      }))
+    },
+    productPriceGroups() {
+      return this.groupItemsByCategoryName(this.products)
+    },
+    productMatrixColumnCount() {
+      return Math.max(...this.productPriceGroups.map((group) => group.items.length), 0)
+    },
+    productPriceMatrixRows() {
+      return this.productPriceGroups.map((group) => ({
+        type: group.categoryName,
+        items: this.padMatrixItems(group.items, this.productMatrixColumnCount, 'product', 'product_name', 'product_price'),
       }))
     },
     todayTicketGroups() {
@@ -1104,6 +1168,54 @@ export default {
     },
     findLongTermProductByName(name) {
       return this.longTermProducts.find((item) => String(item.product_name ?? '').trim() === name) || null
+    },
+    findLongTermTicketForProduct(product, label) {
+      const productCode = String(product?.product_code ?? '').trim().toUpperCase()
+      const productName = String(label ?? product?.product_name ?? '').trim()
+
+      return this.tickets.find((ticket) => {
+        const ticketCode = String(ticket?.ticket_code ?? '').trim().toUpperCase()
+        const ticketName = String(ticket?.ticket_name ?? '').trim()
+
+        if (productCode && ticketCode === productCode) {
+          return true
+        }
+
+        return productName && ticketName === productName
+      }) || null
+    },
+    groupItemsByCategoryName(list) {
+      const groupedMap = new Map()
+
+      list.forEach((item) => {
+        const categoryName = String(item?.category_name || '未分類').trim()
+        if (!groupedMap.has(categoryName)) {
+          groupedMap.set(categoryName, [])
+        }
+        groupedMap.get(categoryName).push(item)
+      })
+
+      return Array.from(groupedMap.entries()).map(([categoryName, items]) => ({
+        categoryName,
+        items,
+      }))
+    },
+    padMatrixItems(items, targetLength, keyPrefix, nameField, priceField) {
+      const normalized = items.map((item, index) => ({
+        key: `${keyPrefix}-${item[`${keyPrefix}_id`] ?? index}`,
+        ticketName: String(item?.[nameField] ?? ''),
+        price: Number(item?.[priceField] ?? 0),
+      }))
+
+      while (normalized.length < targetLength) {
+        normalized.push({
+          key: `${keyPrefix}-placeholder-${normalized.length}`,
+          ticketName: '',
+          price: '',
+        })
+      }
+
+      return normalized
     },
   },
 }
