@@ -1321,6 +1321,7 @@ export default {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-bottom: 10px;
   flex: 1;
   overflow: hidden;
 }
@@ -1360,6 +1361,7 @@ export default {
   gap: 18px;
   min-height: 0;
   flex: 1;
+  max-height: 49.7vh;
   padding: 12px 0 0;
   overflow: hidden;
   align-items: start;
@@ -1504,15 +1506,15 @@ export default {
 .checkout-footer {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
   flex-shrink: 0;
-  margin-top: 12px;
-  padding: 18px 22px;
-  border: 1px solid rgba(34, 66, 49, 0.12);
+  margin-top: 4px;
+  padding: 12px 22px;
+  border: 1px solid rgba(34, 66, 49, 0.08);
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 40px rgba(24, 48, 34, 0.14);
+  box-shadow: 0 8px 16px rgba(24, 48, 34, 0.10);
   backdrop-filter: blur(10px);
 }
 
