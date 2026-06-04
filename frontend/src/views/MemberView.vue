@@ -5,7 +5,7 @@
         <p class="member-eyebrow">Member Search</p>
         <h1>會員查詢</h1>
         <p class="member-description">
-          透過手機號碼、會員編號、姓名、性別、票券資訊與入場時間快速篩選會員，
+          透過手機號碼、會員編號、姓名、性別、票券資訊與註冊日期快速篩選會員，
           並可點選會員編號開啟完整會員資料。
         </p>
       </div>
@@ -51,7 +51,8 @@
         <label class="search-field">
           <span>性別</span>
           <select v-model="filters.gender">
-            <option value="">全部</option>
+            <option value="">請選擇性別</option>
+            <option :value="allOption">全部</option>
             <option value="1">男性</option>
             <option value="2">女性</option>
             <option value="3">其他</option>
@@ -61,7 +62,8 @@
         <label class="search-field">
           <span>票券資訊</span>
           <select v-model="filters.passType">
-            <option value="">全部</option>
+            <option value="">請選擇票券資訊</option>
+            <option :value="allOption">全部</option>
             <option value="單次票券">單次票券</option>
             <option value="月票">月票</option>
             <option value="季票">季票</option>
@@ -83,7 +85,7 @@
 
       <div class="search-actions">
         <div class="search-hint">
-          變更搜尋欄位後，需再次按下搜尋才會更新結果。
+          性別與票券資訊未選擇時只作為提示；若選擇「全部」，會作為有效搜尋條件並列出全部結果。
         </div>
         <div class="search-button-group">
           <button
@@ -197,6 +199,8 @@
 <script>
 import axios from 'axios'
 
+const ALL_OPTION = '__all__'
+
 const createFilters = () => ({
   memberCode: '',
   phone: '',
@@ -208,7 +212,6 @@ const createFilters = () => ({
 })
 
 const normalizeText = (value) => String(value ?? '').trim().toLowerCase()
-
 const normalizeDigits = (value) => String(value ?? '').replace(/\D/g, '')
 
 export default {
@@ -234,6 +237,7 @@ export default {
     return {
       datetime: '',
       clockTimer: null,
+      allOption: ALL_OPTION,
       filters: createFilters(),
       appliedFilters: createFilters(),
       members: [],
@@ -361,14 +365,14 @@ export default {
       if (!this.hasAnyFilter) {
         this.hasSearched = false
         this.appliedFilters = createFilters()
-        this.searchMessage = '請至少輸入一個搜尋條件。'
+        this.searchMessage = '請至少輸入或選擇一個搜尋條件。'
         this.searchMessageType = 'error'
         return
       }
 
       if (this.filters.startDate && this.filters.endDate && this.filters.startDate > this.filters.endDate) {
         this.hasSearched = false
-        this.searchMessage = '入場開始日期不可晚於結束日期。'
+        this.searchMessage = '註冊開始日期不可晚於結束日期。'
         this.searchMessageType = 'error'
         return
       }
@@ -417,6 +421,7 @@ export default {
 
       if (
         this.appliedFilters.gender
+        && this.appliedFilters.gender !== this.allOption
         && String(member.gender) !== String(this.appliedFilters.gender)
       ) {
         return false
@@ -424,7 +429,10 @@ export default {
 
       if (this.appliedFilters.passType) {
         const memberPassType = this.normalizePassType(member.pass_type)
-        if (memberPassType !== this.appliedFilters.passType) {
+        if (
+          this.appliedFilters.passType !== this.allOption
+          && memberPassType !== this.appliedFilters.passType
+        ) {
           return false
         }
       }
@@ -465,11 +473,11 @@ export default {
 
     normalizePassType(value) {
       const passTypeMap = {
-        '單次票券': '單次票券',
-        '月票': '月票',
-        '季票': '季票',
-        '半年票': '半年票',
-        '年票': '年票',
+        單次票券: '單次票券',
+        月票: '月票',
+        季票: '季票',
+        半年票: '半年票',
+        年票: '年票',
       }
 
       return passTypeMap[value] ?? String(value ?? '單次票券')
@@ -501,11 +509,11 @@ export default {
 
     passText(passType) {
       const passLabels = {
-        '單次票券': '單次票券',
-        '月票': '月票',
-        '季票': '季票',
-        '半年票': '半年票',
-        '年票': '年票',
+        單次票券: '單次票券',
+        月票: '月票',
+        季票: '季票',
+        半年票: '半年票',
+        年票: '年票',
       }
 
       return passLabels[passType] ?? passType ?? '單次票券'
