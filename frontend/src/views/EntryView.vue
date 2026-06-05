@@ -295,8 +295,10 @@
               <div class="checkout-detail-scroll">
                 <section ref="activitySection" class="detail-section activity-section">
                   <div class="detail-section-header">
-                    <h2>會員活動</h2>
-                    <p>目前先支援單選一種活動。</p>
+                    <div class="inline-heading">
+                      <h2>會員活動</h2>
+                      <p>目前先支援單選一種活動。</p>
+                    </div>
                   </div>
 
                   <div class="option-list">
@@ -306,8 +308,10 @@
                       :class="{ selected: selectedActivityKey === defaultActivityOption.key }"
                       @click="selectedActivityKey = defaultActivityOption.key"
                     >
-                      <div class="option-card-title">{{ defaultActivityOption.label }}</div>
-                      <div class="option-card-subtitle">{{ defaultActivityOption.description }}</div>
+                      <div class="option-card-heading">
+                        <div class="option-card-title">{{ defaultActivityOption.label }}</div>
+                        <div class="option-card-subtitle">{{ defaultActivityOption.description }}</div>
+                      </div>
                     </button>
                   </div>
 
@@ -322,9 +326,9 @@
                         class="activity-category-header"
                         @click="toggleActivityCategory(category.category_id)"
                       >
-                        <div>
+                        <div class="option-card-heading">
                           <div class="option-card-title">{{ category.category_name }}</div>
-                          <div class="option-card-subtitle">{{ isActivityCategoryExpanded(category.category_id) ? '?嗉絲' : '撅?' }}</div>
+                          <div class="option-card-subtitle">{{ isActivityCategoryExpanded(category.category_id) ? '收起' : '展開' }}</div>
                         </div>
                         <span class="activity-category-toggle">{{ isActivityCategoryExpanded(category.category_id) ? '-' : '+' }}</span>
                       </button>
@@ -339,8 +343,10 @@
                             :class="{ selected: selectedActivityKey === activity.key }"
                             @click="selectedActivityKey = activity.key"
                           >
-                            <div class="option-card-title">{{ activity.label }}</div>
-                            <div class="option-card-subtitle">{{ activity.description }}</div>
+                            <div class="option-card-heading">
+                              <div class="option-card-title">{{ activity.label }}</div>
+                              <div class="option-card-subtitle">{{ activity.description }}</div>
+                            </div>
                           </button>
                         </div>
                         <p v-else class="empty-state">尚未建立任何活動</p>
@@ -351,8 +357,10 @@
 
                 <section ref="paymentSection" class="detail-section">
                   <div class="detail-section-header">
-                    <h2>付款方式</h2>
-                    <p>請選擇本次結帳使用的付款方式。</p>
+                    <div class="inline-heading">
+                      <h2>付款方式</h2>
+                      <p>請選擇本次結帳使用的付款方式。</p>
+                    </div>
                   </div>
 
                   <div class="option-list payment-grid">
@@ -371,36 +379,67 @@
 
                 <section ref="invoiceSection" class="detail-section">
                   <div class="detail-section-header">
-                    <h2>稅務相關</h2>
-                    <p>不開立、統一編號、載具條碼、捐贈碼擇一。</p>
+                    <div class="inline-heading">
+                      <h2>稅務相關</h2>
+                      <p>擇一開立。</p>
+                    </div>
                   </div>
 
-                  <div class="option-list">
-                    <button
+                  <div class="option-list invoice-option-list">
+                    <div
                       v-for="option in invoiceOptions"
                       :key="option.value"
-                      type="button"
-                      class="option-card"
-                      :class="{ selected: invoiceType === option.value }"
-                      @click="selectInvoiceType(option.value)"
+                      class="invoice-option-item"
                     >
-                      <div class="option-card-title">{{ option.label }}</div>
-                    </button>
-                  </div>
+                      <div
+                        class="option-card invoice-option-card"
+                        :class="{ selected: invoiceType === option.value }"
+                        role="button"
+                        tabindex="0"
+                        @click="selectInvoiceType(option.value)"
+                        @keydown.enter.prevent="selectInvoiceType(option.value)"
+                        @keydown.space.prevent="selectInvoiceType(option.value)"
+                      >
+                        <div class="invoice-option-button">
+                          <div class="option-card-title">{{ option.label }}</div>
+                        </div>
 
-                  <div v-if="invoiceType === 1" class="invoice-input-card">
-                    <label>統一編號</label>
-                    <input v-model.trim="taxId" type="text" placeholder="請輸入統一編號" />
-                  </div>
-
-                  <div v-if="invoiceType === 2" class="invoice-input-card">
-                    <label>載具條碼</label>
-                    <input v-model.trim="carrierCode" type="text" placeholder="請輸入載具條碼" />
-                  </div>
-
-                  <div v-if="invoiceType === 3" class="invoice-input-card">
-                    <label>捐贈碼</label>
-                    <input v-model.trim="donateCode" type="text" placeholder="請輸入捐贈碼" />
+                        <div v-if="invoiceType === option.value && option.value !== 0" class="invoice-input-row inline-inside-card">
+                          <input
+                            v-if="option.value === 1"
+                            v-model="taxId"
+                            type="text"
+                            class="invoice-compact-input"
+                            inputmode="numeric"
+                            maxlength="8"
+                            placeholder="8碼"
+                            @input="handleTaxIdInput"
+                            @click.stop
+                          />
+                          <input
+                            v-else-if="option.value === 2"
+                            v-model="carrierCode"
+                            type="text"
+                            class="invoice-compact-input"
+                            maxlength="8"
+                            placeholder="/XXXXXXX"
+                            @input="handleCarrierCodeInput"
+                            @click.stop
+                          />
+                          <input
+                            v-else
+                            v-model="donateCode"
+                            type="text"
+                            class="invoice-compact-input"
+                            inputmode="numeric"
+                            maxlength="7"
+                            placeholder="3-7碼"
+                            @input="handleDonateCodeInput"
+                            @click.stop
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -886,8 +925,32 @@ export default {
     selectInvoiceType(type) {
       this.invoiceType = type
       this.taxId = ''
-      this.carrierCode = ''
+      this.carrierCode = type === 2 ? '/' : ''
       this.donateCode = ''
+    },
+    handleTaxIdInput(event) {
+      const rawValue = String(event?.target?.value ?? this.taxId ?? '')
+      const normalizedValue = rawValue.replace(/\D/g, '').slice(0, 8)
+      this.taxId = normalizedValue
+      if (event?.target && event.target.value !== normalizedValue) {
+        event.target.value = normalizedValue
+      }
+    },
+    handleCarrierCodeInput(event) {
+      const rawValue = String(event?.target?.value ?? this.carrierCode ?? '')
+      const normalizedValue = `/${rawValue.replace(/\//g, '').replace(/[^0-9a-zA-Z.+-]/g, '').toUpperCase().slice(0, 7)}`
+      this.carrierCode = normalizedValue
+      if (event?.target && event.target.value !== normalizedValue) {
+        event.target.value = normalizedValue
+      }
+    },
+    handleDonateCodeInput(event) {
+      const rawValue = String(event?.target?.value ?? this.donateCode ?? '')
+      const normalizedValue = rawValue.replace(/\D/g, '').slice(0, 7)
+      this.donateCode = normalizedValue
+      if (event?.target && event.target.value !== normalizedValue) {
+        event.target.value = normalizedValue
+      }
     },
     validateCheckoutForm() {
       if (!this.paymentMethod) {
@@ -896,20 +959,20 @@ export default {
         this.scrollToSection('payment')
         return false
       }
-      if (this.invoiceType === 1 && !this.taxId) {
-        this.visitMessage = '請輸入統一編號。'
+      if (this.invoiceType === 1 && !/^\d{8}$/.test(this.taxId)) {
+        this.visitMessage = '統一編號需為 8 碼。'
         this.visitMessageType = 'error'
         this.scrollToSection('invoice')
         return false
       }
-      if (this.invoiceType === 2 && !this.carrierCode) {
-        this.visitMessage = '請輸入載具條碼。'
+      if (this.invoiceType === 2 && !/^\/[0-9A-Z.+-]{7}$/.test(this.carrierCode)) {
+        this.visitMessage = '載具條碼需為 8 碼。'
         this.visitMessageType = 'error'
         this.scrollToSection('invoice')
         return false
       }
-      if (this.invoiceType === 3 && !this.donateCode) {
-        this.visitMessage = '請輸入捐贈碼。'
+      if (this.invoiceType === 3 && !/^\d{3,7}$/.test(this.donateCode)) {
+        this.visitMessage = '捐贈碼需為 3 到 7 碼。'
         this.visitMessageType = 'error'
         this.scrollToSection('invoice')
         return false
@@ -1518,6 +1581,25 @@ export default {
   margin-top: 16px;
 }
 
+.invoice-option-list {
+  gap: 14px;
+}
+
+.invoice-option-item {
+  display: grid;
+  gap: 10px;
+}
+
+.invoice-option-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.invoice-option-button {
+  flex: 0 0 auto;
+}
+
 .activity-category-list {
   display: grid;
   gap: 14px;
@@ -1563,6 +1645,14 @@ export default {
   padding: 16px 18px;
 }
 
+.inline-heading,
+.option-card-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .option-card.selected {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px rgba(47, 122, 83, 0.18);
@@ -1574,7 +1664,7 @@ export default {
 }
 
 .option-card-subtitle {
-  margin-top: 6px;
+  margin-top: 0;
   color: var(--text-soft);
 }
 
@@ -1583,6 +1673,7 @@ export default {
 }
 
 .activity-section .detail-section-header p {
+  margin: 0;
   font-size: 14px;
 }
 
@@ -1595,13 +1686,36 @@ export default {
 }
 
 .activity-section .option-card-subtitle {
-  margin-top: 4px;
   font-size: 14px;
 }
 
-.invoice-input-card {
-  margin-top: 16px;
+.invoice-input-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
+
+.inline-inside-card {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.invoice-compact-input {
+  width: 180px;
+  padding: 12px 14px;
+  border: 1px solid rgba(34, 66, 49, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.invoice-compact-input::placeholder {
+  letter-spacing: normal;
+  font-weight: 500;
+}
+
 
 .checkout-footer {
   display: grid;
@@ -1692,6 +1806,18 @@ export default {
 
   .checkout-footer {
     padding: 16px;
+  }
+
+  .invoice-option-card,
+  .invoice-input-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .invoice-option-button,
+  .inline-inside-card,
+  .invoice-compact-input {
+    width: 100%;
   }
 }
 </style>
