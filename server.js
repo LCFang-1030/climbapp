@@ -1168,6 +1168,114 @@ app.get('/api/product_category', async (req, res) => {
   }
 });
 
+app.get('/api/member_activities', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const categories = await conn.query(`
+      SELECT category_id, category_code, category_name
+      FROM activity_categories
+      WHERE is_active = 1
+      ORDER BY category_id
+    `);
+
+    const promotions = await conn.query(`
+      SELECT
+        p.promotion_id,
+        p.category_id,
+        p.promotion_name,
+        p.start_time,
+        p.end_time,
+        p.is_active,
+        pr.rule_id,
+        pr.discount_type,
+        pr.discount_value
+      FROM promotions p
+      LEFT JOIN promotion_rules pr ON pr.promotion_id = p.promotion_id
+      WHERE p.is_active = 1
+      ORDER BY p.category_id, p.promotion_id, pr.rule_id
+    `);
+
+    const formatDateTime = (value) => {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleString('zh-TW', {
+        hour12: false,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    };
+
+    const formatPercentDiscountText = (value) => {
+      const amount = Number(value ?? 0);
+      if (amount <= 0) return '折扣活動';
+      const discountNumber = amount * 100;
+      return Number.isInteger(discountNumber) && discountNumber % 10 === 0
+        ? `${discountNumber / 10} 折`
+        : `${discountNumber} 折`;
+    };
+
+    const formatDiscountText = (type, value) => {
+      const amount = Number(value ?? 0);
+      if (type === 'amount') return `折抵 ${amount.toLocaleString('zh-TW')} 元`;
+      if (type === 'percent') return formatPercentDiscountText(amount);
+      if (type === 'fixed') return `固定成 ${amount.toLocaleString('zh-TW')} 元`;
+      return '優惠活動';
+    };
+
+    const formatPeriodText = (startTime, endTime) => {
+      const startLabel = formatDateTime(startTime);
+      const endLabel = formatDateTime(endTime);
+      if (startLabel && endLabel) return `${startLabel} - ${endLabel}`;
+      if (startLabel) return `${startLabel} 起`;
+      if (endLabel) return `至 ${endLabel}`;
+      return '';
+    };
+
+    const promotionsByCategoryId = promotions.reduce((map, promotion) => {
+      const categoryId = Number(promotion.category_id);
+      const promotionId = Number(promotion.promotion_id);
+      const list = map.get(categoryId) ?? [];
+
+      if (!list.some((item) => item.activity_id === promotionId)) {
+        const discountText = formatDiscountText(promotion.discount_type, promotion.discount_value);
+        const periodText = formatPeriodText(promotion.start_time, promotion.end_time);
+
+        list.push({
+          key: `promotion-${promotionId}`,
+          activity_id: promotionId,
+          label: promotion.promotion_name,
+          description: periodText ? `${discountText} | ${periodText}` : discountText,
+          type: String(promotion.discount_type ?? 'none'),
+          value: Number(promotion.discount_value ?? 0),
+        });
+      }
+
+      map.set(categoryId, list);
+      return map;
+    }, new Map());
+
+    res.json(
+      categories.map((category) => ({
+        category_id: Number(category.category_id),
+        category_code: category.category_code,
+        category_name: category.category_name,
+        promotions: promotionsByCategoryId.get(Number(category.category_id)) ?? [],
+      }))
+    );
+  } catch (err) {
+    console.error('member_activities DB error', err);
+    res.status(500).send('member_activities DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/product', async (req, res) => {
   const {
     product_name,

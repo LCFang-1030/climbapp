@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="entry-page">
     <section class="entry-main-card">
       <template v-if="entryStep === 1">
@@ -218,7 +218,7 @@
             <div class="panel-title">結帳應付金額</div>
             <strong class="total-amount">${{ formatPrice(subtotalAmount) }}</strong>
             <button type="button" class="submit-button" @click="goToCheckoutStep">
-              送出入場
+              前往入場
             </button>
             <p v-if="visitMessage" class="entry-message" :class="visitMessageClass">
               {{ visitMessage }}
@@ -301,23 +301,58 @@
 
                   <div class="option-list">
                     <button
-                      v-for="activity in activityOptions"
-                      :key="activity.key"
                       type="button"
                       class="option-card"
-                      :class="{ selected: selectedActivityKey === activity.key }"
-                      @click="selectedActivityKey = activity.key"
+                      :class="{ selected: selectedActivityKey === defaultActivityOption.key }"
+                      @click="selectedActivityKey = defaultActivityOption.key"
                     >
-                      <div class="option-card-title">{{ activity.label }}</div>
-                      <div class="option-card-subtitle">{{ activity.description }}</div>
+                      <div class="option-card-title">{{ defaultActivityOption.label }}</div>
+                      <div class="option-card-subtitle">{{ defaultActivityOption.description }}</div>
                     </button>
+                  </div>
+
+                  <div class="activity-category-list">
+                    <article
+                      v-for="category in memberActivityCategories"
+                      :key="category.category_id"
+                      class="activity-category-card"
+                    >
+                      <button
+                        type="button"
+                        class="activity-category-header"
+                        @click="toggleActivityCategory(category.category_id)"
+                      >
+                        <div>
+                          <div class="option-card-title">{{ category.category_name }}</div>
+                          <div class="option-card-subtitle">{{ isActivityCategoryExpanded(category.category_id) ? '?嗉絲' : '撅?' }}</div>
+                        </div>
+                        <span class="activity-category-toggle">{{ isActivityCategoryExpanded(category.category_id) ? '-' : '+' }}</span>
+                      </button>
+
+                      <div v-if="isActivityCategoryExpanded(category.category_id)" class="activity-category-body">
+                        <div v-if="category.promotions.length" class="option-list">
+                          <button
+                            v-for="activity in category.promotions"
+                            :key="activity.key"
+                            type="button"
+                            class="option-card"
+                            :class="{ selected: selectedActivityKey === activity.key }"
+                            @click="selectedActivityKey = activity.key"
+                          >
+                            <div class="option-card-title">{{ activity.label }}</div>
+                            <div class="option-card-subtitle">{{ activity.description }}</div>
+                          </button>
+                        </div>
+                        <p v-else class="empty-state">尚未建立任何活動</p>
+                      </div>
+                    </article>
                   </div>
                 </section>
 
                 <section ref="paymentSection" class="detail-section">
                   <div class="detail-section-header">
-                    <h2>支付方式</h2>
-                    <p>只能選擇其中一種。</p>
+                    <h2>付款方式</h2>
+                    <p>請選擇本次結帳使用的付款方式。</p>
                   </div>
 
                   <div class="option-list payment-grid">
@@ -438,19 +473,17 @@ export default {
       visitMessageType: '',
       isClearingSearchAfterSelect: false,
       selectedActivityKey: 'none',
+      memberActivityCategories: [],
+      expandedActivityCategoryIds: [],
       paymentMethod: null,
       invoiceType: 0,
       taxId: '',
       carrierCode: '',
       donateCode: '',
       pickerTabs: [
-        { key: 'ticket', label: '進場票券' },
+        { key: 'ticket', label: '入場票券' },
         { key: 'rental', label: '設備租借' },
         { key: 'product', label: '商品販售' },
-      ],
-      activityOptions: [
-        { key: 'none', label: '不使用活動', description: '照原價結帳', type: 'none', value: 0 },
-        { key: 'opening', label: '開幕活動 9 折', description: '總金額 9 折', type: 'percent', value: 10 },
       ],
       paymentOptions: [
         { value: 1, label: '現金' },
@@ -562,19 +595,30 @@ export default {
       return this.lineItems.reduce((total, item) => total + Number(item.unit_price ?? 0) * Number(item.quantity ?? 0), 0)
     },
 
+    allActivityOptions() {
+      return [this.defaultActivityOption, ...this.memberActivityCategories.flatMap((category) => category.promotions)]
+    },
+
+    defaultActivityOption() {
+      return { key: 'none', label: '不使用活動', description: '照原價結帳', type: 'none', value: 0, activity_id: null }
+    },
+
     selectedActivity() {
-      return this.activityOptions.find((activity) => activity.key === this.selectedActivityKey) ?? this.activityOptions[0]
+      return this.allActivityOptions.find((activity) => activity.key === this.selectedActivityKey) ?? this.defaultActivityOption
     },
 
     discountAmount() {
       if (!this.selectedActivity || this.selectedActivity.type === 'none') {
         return 0
       }
+      if (this.selectedActivity.type === 'amount') {
+        return Math.min(Number(this.selectedActivity.value ?? 0), this.subtotalAmount)
+      }
       if (this.selectedActivity.type === 'percent') {
-        return Math.round(this.subtotalAmount * (Number(this.selectedActivity.value ?? 0) / 100))
+        return Math.max(this.subtotalAmount - Math.round(this.subtotalAmount * Number(this.selectedActivity.value ?? 1)), 0)
       }
       if (this.selectedActivity.type === 'fixed') {
-        return Math.min(Number(this.selectedActivity.value ?? 0), this.subtotalAmount)
+        return Math.max(this.subtotalAmount - Number(this.selectedActivity.value ?? 0), 0)
       }
       return 0
     },
@@ -612,6 +656,7 @@ export default {
     this.fetchTickets()
     this.fetchRentalEquipment()
     this.fetchProducts()
+    this.fetchMemberActivities()
   },
 
   beforeUnmount() {
@@ -653,8 +698,29 @@ export default {
         console.error('取得商品失敗', err)
       }
     },
+    async fetchMemberActivities() {
+      try {
+        const res = await axios.get('/api/member_activities')
+        this.memberActivityCategories = Array.isArray(res.data) ? res.data : []
+        this.expandedActivityCategoryIds = this.memberActivityCategories.map((category) => category.category_id)
+      } catch (err) {
+        console.error('取得會員活動失敗', err)
+        this.memberActivityCategories = []
+        this.expandedActivityCategoryIds = []
+      }
+    },
     getItemQuantity(quantityMap, code) {
       return Number(quantityMap?.[code] ?? 0)
+    },
+    isActivityCategoryExpanded(categoryId) {
+      return this.expandedActivityCategoryIds.includes(categoryId)
+    },
+    toggleActivityCategory(categoryId) {
+      if (this.isActivityCategoryExpanded(categoryId)) {
+        this.expandedActivityCategoryIds = this.expandedActivityCategoryIds.filter((id) => id !== categoryId)
+        return
+      }
+      this.expandedActivityCategoryIds = [...this.expandedActivityCategoryIds, categoryId]
     },
     setItemQuantity(type, code, quantity) {
       const mapKey = QUANTITY_MAP_KEYS[type]
@@ -683,7 +749,7 @@ export default {
     async searchMember() {
       if (!this.phone) {
         this.clearMember()
-        this.searchMessage = '請輸入會員編號、姓名或手機。'
+        this.searchMessage = '請輸入手機號碼、會員編號或姓名'
         return
       }
       this.isSearching = true
@@ -695,7 +761,7 @@ export default {
         const member = exactMember ?? (matches.length === 1 ? matches[0].member : null)
         if (!member) {
           this.clearMember()
-          this.searchMessage = matches.length > 1 ? `找到 ${matches.length} 位符合會員，請輸入更完整條件。` : '找不到符合的會員。'
+          this.searchMessage = matches.length > 1 ? `找到 ${matches.length} 筆會員資料，請輸入更完整資訊，或直接點選下方建議會員` : '查無符合的會員資料'
           return
         }
         this.setSelectedMember(member)
@@ -800,7 +866,7 @@ export default {
         return
       }
       if (!this.selectedTicketItems.length) {
-        this.visitMessage = '請至少選擇一張入場票券。'
+        this.visitMessage = '請至少選擇一項票券。'
         this.visitMessageType = 'error'
         return
       }
@@ -825,7 +891,7 @@ export default {
     },
     validateCheckoutForm() {
       if (!this.paymentMethod) {
-        this.visitMessage = '請選擇支付方式。'
+        this.visitMessage = '請選擇付款方式。'
         this.visitMessageType = 'error'
         this.scrollToSection('payment')
         return false
@@ -854,7 +920,7 @@ export default {
       const auth = getStoredAuth()
       return {
         member_id: this.selectedMember.member_id,
-        activity_id: null,
+        activity_id: this.selectedActivity?.activity_id ?? null,
         discount_amount: this.discountAmount,
         payment_method: this.paymentMethod,
         invoice_type: this.invoiceType,
@@ -899,8 +965,8 @@ export default {
         this.visitMessageType = 'success'
         this.resetSelection()
       } catch (err) {
-        console.error('新增入場紀錄失敗', err)
-        this.visitMessage = err.response?.data?.message ?? '新增入場紀錄失敗。'
+        console.error('新增入場資料失敗', err)
+        this.visitMessage = err.response?.data?.message ?? '新增入場資料失敗。'
         this.visitMessageType = 'error'
       } finally {
         this.isSubmittingVisit = false
@@ -1450,6 +1516,40 @@ export default {
   display: grid;
   gap: 12px;
   margin-top: 16px;
+}
+
+.activity-category-list {
+  display: grid;
+  gap: 14px;
+}
+
+.activity-category-card {
+  border: 1px solid rgba(34, 66, 49, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  overflow: hidden;
+}
+
+.activity-category-header {
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 16px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  cursor: pointer;
+}
+
+.activity-category-body {
+  padding: 0 18px 18px;
+}
+
+.activity-category-toggle {
+  font-size: 24px;
+  line-height: 1;
+  color: var(--accent-strong);
 }
 
 .payment-grid {

@@ -17,6 +17,39 @@
 /*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
 
 --
+-- Table structure for table `activity_categories`
+--
+
+DROP TABLE IF EXISTS `activity_categories`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `activity_categories` (
+  `category_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '活動分類ID',
+  `category_code` varchar(50) NOT NULL COMMENT '活動分類代碼',
+  `category_name` varchar(50) NOT NULL COMMENT '活動分類名稱',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用 1=啟用 0=停用',
+  `created_at` datetime DEFAULT current_timestamp() COMMENT '建立時間',
+  PRIMARY KEY (`category_id`),
+  UNIQUE KEY `category_code` (`category_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='活動分類表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `activity_categories`
+--
+
+LOCK TABLES `activity_categories` WRITE;
+/*!40000 ALTER TABLE `activity_categories` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `activity_categories` VALUES
+(1,'ACT0001','優惠活動',1,'2026-06-05 13:36:44'),
+(2,'ACT0002','贈品活動',1,'2026-06-05 13:36:44'),
+(3,'ACT0003','會員福利',1,'2026-06-05 13:36:44');
+/*!40000 ALTER TABLE `activity_categories` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `bulletin_board`
 --
 
@@ -366,6 +399,105 @@ UNLOCK TABLES;
 commit;
 
 --
+-- Table structure for table `promotion_logs`
+--
+
+DROP TABLE IF EXISTS `promotion_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `promotion_logs` (
+  `log_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '使用紀錄ID',
+  `promotion_id` bigint(20) unsigned NOT NULL COMMENT '優惠活動ID',
+  `member_id` bigint(20) unsigned NOT NULL COMMENT '會員ID',
+  `original_price` int(11) NOT NULL COMMENT '原始價格',
+  `final_price` int(11) NOT NULL COMMENT '折扣後價格',
+  `created_at` datetime DEFAULT current_timestamp() COMMENT '使用時間',
+  PRIMARY KEY (`log_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='優惠使用紀錄表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `promotion_logs`
+--
+
+LOCK TABLES `promotion_logs` WRITE;
+/*!40000 ALTER TABLE `promotion_logs` DISABLE KEYS */;
+set autocommit=0;
+/*!40000 ALTER TABLE `promotion_logs` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `promotion_rules`
+--
+
+DROP TABLE IF EXISTS `promotion_rules`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `promotion_rules` (
+  `rule_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '規則ID',
+  `promotion_id` bigint(20) unsigned NOT NULL COMMENT '優惠活動ID',
+  `discount_type` varchar(30) NOT NULL COMMENT ' 折扣類型： amount = 固定折扣 percent = 百分比折扣 fixed = 固定價格 ',
+  `discount_value` decimal(10,2) NOT NULL COMMENT '折扣數值',
+  `extra_config` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT '進階設定（未來擴充用，例如條件、限制）' CHECK (json_valid(`extra_config`)),
+  PRIMARY KEY (`rule_id`),
+  KEY `fk_rules_promotion` (`promotion_id`),
+  CONSTRAINT `fk_rules_promotion` FOREIGN KEY (`promotion_id`) REFERENCES `promotions` (`promotion_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='優惠規則表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `promotion_rules`
+--
+
+LOCK TABLES `promotion_rules` WRITE;
+/*!40000 ALTER TABLE `promotion_rules` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `promotion_rules` VALUES
+(1,1,'amount',50.00,NULL),
+(2,2,'percent',0.90,NULL),
+(3,3,' fixed',200.00,NULL);
+/*!40000 ALTER TABLE `promotion_rules` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `promotions`
+--
+
+DROP TABLE IF EXISTS `promotions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `promotions` (
+  `promotion_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '優惠活動ID',
+  `category_id` bigint(20) unsigned NOT NULL COMMENT '活動分類ID',
+  `promotion_name` varchar(100) NOT NULL COMMENT '優惠活動名稱',
+  `start_time` datetime DEFAULT NULL COMMENT '開始時間',
+  `end_time` datetime DEFAULT NULL COMMENT '結束時間',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用 1=啟用 0=停用',
+  `created_at` datetime DEFAULT current_timestamp() COMMENT '建立時間',
+  PRIMARY KEY (`promotion_id`),
+  KEY `fk_promotions_category` (`category_id`),
+  CONSTRAINT `fk_promotions_category` FOREIGN KEY (`category_id`) REFERENCES `activity_categories` (`category_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='優惠活動主表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `promotions`
+--
+
+LOCK TABLES `promotions` WRITE;
+/*!40000 ALTER TABLE `promotions` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `promotions` VALUES
+(1,1,'優惠活動A','2026-06-01 00:00:00','2026-06-30 00:00:00',1,'2026-06-05 13:43:42'),
+(2,1,'優惠活動B','2026-07-01 00:00:00','2026-07-01 00:00:00',1,'2026-06-05 13:43:42'),
+(3,1,'優惠活動C','2026-06-01 00:00:00','2026-06-20 00:00:00',1,'2026-06-05 13:43:42');
+/*!40000 ALTER TABLE `promotions` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `rental_equipment`
 --
 
@@ -684,4 +816,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-06-02 15:24:03
+-- Dump completed on 2026-06-05 14:20:45
