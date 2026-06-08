@@ -3,656 +3,129 @@
     <section class="management-section">
       <div class="section-header">
         <div>
-          <h1>票券</h1>
-          <p class="section-subtitle">管理票券價格、建立票種與切換啟用狀態。</p>
+          <h1>項目管理</h1>
+          <p class="section-subtitle">整合票券、租借裝備與商品的價格、分類與啟用設定。</p>
         </div>
 
         <div class="section-actions">
-          <button type="button" class="secondary-button" @click="openTicketSettingsDialog">
-            票券設定
+          <button type="button" class="secondary-button" @click="openSettingsDialog(activeType)">
+            項目設定
           </button>
-          <button type="button" class="primary-button" @click="openTicketCreateDialog">
-            新增票券
+          <button type="button" class="primary-button" @click="openCreateDialog(activeType)">
+            新增項目
           </button>
         </div>
       </div>
 
-      <p v-if="ticketState.isLoading" class="section-message">載入票券資料中...</p>
-      <p v-else-if="ticketState.errorMessage" class="section-message error">
-        {{ ticketState.errorMessage }}
-      </p>
+      <div class="entry-tabs" role="tablist" aria-label="項目分類">
+        <button
+          v-for="tab in itemTabs"
+          :key="tab.key"
+          type="button"
+          class="entry-tab"
+          :class="{ active: activeType === tab.key }"
+          @click="activeType = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
 
-      <div v-else class="category-group-list">
+      <p v-if="activeState.isLoading" class="section-message">
+        載入{{ activeConfig.label }}資料中...
+      </p>
+      <p v-else-if="activeState.errorMessage" class="section-message error">
+        {{ activeState.errorMessage }}
+      </p>
+      <p v-else-if="!activeState.list.length" class="section-message">目前沒有資料。</p>
+
+      <div v-else class="entry-picker-panel">
         <section
-          v-for="group in groupItemsByCategory(ticketState.list)"
-          :key="`ticket-${group.categoryName}`"
+          v-for="group in activeGroups"
+          :key="`${activeType}-${group.categoryName}`"
           class="category-group"
         >
           <h3 class="category-group-title">{{ group.categoryName }}</h3>
-          <div class="card-list">
+          <div class="item-grid">
             <button
-              v-for="ticket in group.items"
-              :key="ticket.ticket_id"
+              v-for="item in group.items"
+              :key="getItemId(activeType, item)"
               type="button"
               class="item-card"
-              @click="openTicketPriceDialog(ticket)"
+              :class="{ 'is-product': activeType === 'product' }"
+              @click="openPriceDialog(activeType, item)"
             >
               <div class="item-card-top">
                 <div class="item-card-copy">
-                  <span class="item-name">{{ ticket.ticket_name }}</span>
+                  <strong class="item-name">{{ getItemName(activeType, item) }}</strong>
+                  <span v-if="activeType === 'product'" class="item-meta">
+                    庫存 {{ formatStockQty(item.stock_qty) }}
+                  </span>
                 </div>
                 <span
                   class="status-badge"
-                  :class="Number(ticket.is_active) === 0 ? 'inactive' : 'active'"
+                  :class="Number(item.is_active) === 0 ? 'inactive' : 'active'"
                 >
-                  {{ Number(ticket.is_active) === 0 ? '停用中' : '啟用中' }}
+                  {{ Number(item.is_active) === 0 ? '未啟用' : '啟用中' }}
                 </span>
               </div>
-              <span class="item-price">${{ formatPrice(ticket.ticket_price) }}</span>
+
+              <span class="item-price">${{ formatPrice(getItemPrice(activeType, item)) }}</span>
             </button>
           </div>
         </section>
       </div>
     </section>
 
-    <section class="management-section">
-      <div class="section-header">
-        <div>
-          <h2>租借裝備</h2>
-          <p class="section-subtitle">管理租借裝備價格、建立品項與切換啟用狀態。</p>
-        </div>
-
-        <div class="section-actions">
-          <button type="button" class="secondary-button" @click="openRentalSettingsDialog">
-            裝備設定
-          </button>
-          <button type="button" class="primary-button" @click="openRentalCreateDialog">
-            新增裝備
-          </button>
-        </div>
-      </div>
-
-      <p v-if="rentalState.isLoading" class="section-message">載入租借裝備資料中...</p>
-      <p v-else-if="rentalState.errorMessage" class="section-message error">
-        {{ rentalState.errorMessage }}
-      </p>
-
-      <div v-else class="category-group-list">
-        <section
-          v-for="group in groupItemsByCategory(rentalState.list)"
-          :key="`rental-${group.categoryName}`"
-          class="category-group"
-        >
-          <h3 class="category-group-title">{{ group.categoryName }}</h3>
-          <div class="card-list">
-            <button
-              v-for="rental in group.items"
-              :key="rental.rental_id"
-              type="button"
-              class="item-card"
-              @click="openRentalPriceDialog(rental)"
-            >
-              <div class="item-card-top">
-                <div class="item-card-copy">
-                  <span class="item-name">{{ rental.rental_name }}</span>
-                </div>
-                <span
-                  class="status-badge"
-                  :class="Number(rental.is_active) === 0 ? 'inactive' : 'active'"
-                >
-                  {{ Number(rental.is_active) === 0 ? '停用中' : '啟用中' }}
-                </span>
-              </div>
-              <span class="item-price">${{ formatPrice(rental.rental_price) }}</span>
-            </button>
-          </div>
-        </section>
-      </div>
-    </section>
-
-    <section class="management-section product-section">
-      <div class="section-header">
-        <div>
-          <h2>商品</h2>
-          <p class="section-subtitle">管理商品價格、建立品項與切換啟用狀態。</p>
-        </div>
-
-        <div class="section-actions">
-          <button type="button" class="secondary-button" @click="openProductSettingsDialog">
-            商品設定
-          </button>
-          <button type="button" class="primary-button" @click="openProductCreateDialog">
-            新增商品
-          </button>
-        </div>
-      </div>
-
-      <p v-if="productState.isLoading" class="section-message">載入商品資料中...</p>
-      <p v-else-if="productState.errorMessage" class="section-message error">
-        {{ productState.errorMessage }}
-      </p>
-
-      <div v-else class="category-group-list">
-        <section
-          v-for="group in groupItemsByCategory(productState.list)"
-          :key="`product-${group.categoryName}`"
-          class="category-group"
-        >
-          <h3 class="category-group-title">{{ group.categoryName }}</h3>
-          <div class="card-list">
-            <button
-              v-for="product in group.items"
-              :key="product.product_id"
-              type="button"
-              class="item-card product-card"
-              @click="openProductPriceDialog(product)"
-            >
-              <div class="item-card-top">
-                <div class="item-card-copy">
-                  <span class="item-name">{{ product.product_name }}</span>
-                  <span class="item-meta">庫存：{{ formatStockQty(product.stock_qty) }}</span>
-                </div>
-                <span
-                  class="status-badge"
-                  :class="Number(product.is_active) === 0 ? 'inactive' : 'active'"
-                >
-                  {{ Number(product.is_active) === 0 ? '停用中' : '啟用中' }}
-                </span>
-              </div>
-              <span class="item-price">${{ formatPrice(product.product_price) }}</span>
-            </button>
-          </div>
-        </section>
-      </div>
-    </section>
-
-    <div
-      v-if="ticketState.isPriceDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeTicketDialogs"
-    >
-      <aside class="side-dialog" aria-label="調整票券價格">
+    <div v-if="dialogState.mode === 'price'" class="dialog-overlay" @click.self="closeDialog">
+      <aside class="side-dialog" aria-label="調整項目價格">
         <div class="dialog-header">
-          <h3>調整票券價格</h3>
+          <h3>調整{{ currentDialogConfig.label }}價格</h3>
           <button
             type="button"
             class="dialog-close-button"
-            aria-label="關閉調整票券價格視窗"
-            @click="closeTicketDialogs"
+            aria-label="關閉調整項目價格視窗"
+            @click="closeDialog"
           >
             X
           </button>
         </div>
 
-        <form class="form-grid" @submit.prevent="submitTicketPriceUpdate">
+        <form class="form-grid" @submit.prevent="submitPriceUpdate">
           <label>
-            票券代碼
-            <input :value="ticketState.priceForm.ticket_code" type="text" disabled />
+            項目代碼
+            <input :value="currentDialogState.priceForm.code" type="text" disabled />
           </label>
 
           <label>
-            票券名稱
-            <input :value="ticketState.priceForm.ticket_name" type="text" disabled />
+            項目名稱
+            <input :value="currentDialogState.priceForm.name" type="text" disabled />
           </label>
 
           <label>
-            類別
-            <input :value="ticketState.priceForm.category_name" type="text" disabled />
+            小分類
+            <input :value="currentDialogState.priceForm.category_name" type="text" disabled />
           </label>
 
-          <label>
-            票價
-            <input
-              v-model.number="ticketState.priceForm.ticket_price"
-              type="number"
-              min="0"
-              required
-            />
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" class="primary-button" :disabled="ticketState.isSubmitting">
-              {{ ticketState.isSubmitting ? '儲存中...' : '儲存價格' }}
-            </button>
-            <button type="button" class="secondary-button" @click="closeTicketDialogs">
-              取消
-            </button>
-          </div>
-        </form>
-      </aside>
-    </div>
-
-    <div
-      v-if="ticketState.isCreateDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeTicketDialogs"
-    >
-      <aside class="side-dialog" aria-label="新增票券">
-        <div class="dialog-header">
-          <h3>新增票券</h3>
-          <button
-            type="button"
-            class="dialog-close-button"
-            aria-label="關閉新增票券視窗"
-            @click="closeTicketDialogs"
-          >
-            X
-          </button>
-        </div>
-
-        <form class="form-grid" @submit.prevent="submitNewTicket">
-          <label>
-            票券名稱
-            <input v-model.trim="ticketState.createForm.ticket_name" type="text" required />
-          </label>
-
-          <label>
-            類別
-            <select v-model.number="ticketState.createForm.category_id" required>
-              <option :value="null" disabled>請選擇票券類別</option>
-              <option
-                v-for="category in ticketCategoryOptions"
-                :key="category.category_id"
-                :value="Number(category.category_id)"
-              >
-                {{ category.category_name }}
-              </option>
-            </select>
-          </label>
-
-          <label>
-            票價
-            <input
-              v-model.number="ticketState.createForm.ticket_price"
-              type="number"
-              min="0"
-              required
-            />
-          </label>
-
-          <label>
-            啟用狀態
-            <select v-model.number="ticketState.createForm.is_active">
-              <option :value="1">啟用</option>
-              <option :value="0">停用</option>
-            </select>
-          </label>
-
-          <label>
-            備註
-            <textarea v-model.trim="ticketState.createForm.note" rows="3" />
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" class="primary-button" :disabled="ticketState.isSubmitting">
-              {{ ticketState.isSubmitting ? '建立中...' : '建立票券' }}
-            </button>
-            <button type="button" class="secondary-button" @click="closeTicketDialogs">
-              取消
-            </button>
-          </div>
-        </form>
-      </aside>
-    </div>
-
-    <div
-      v-if="ticketState.isSettingsDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeTicketDialogs"
-    >
-      <aside class="side-dialog" aria-label="票券設定">
-        <div class="dialog-header">
-          <h3>票券設定</h3>
-          <button
-            type="button"
-            class="dialog-close-button"
-            aria-label="關閉票券設定視窗"
-            @click="closeTicketDialogs"
-          >
-            X
-          </button>
-        </div>
-
-        <div class="settings-list">
-          <div
-            v-for="ticket in ticketState.list"
-            :key="ticket.ticket_id"
-            class="settings-item"
-          >
-            <div class="settings-copy">
-              <strong>{{ ticket.ticket_name }}</strong>
-              <span>
-                {{ ticket.ticket_code }} | {{ ticket.category_name || '未分類' }} |
-                ${{ formatPrice(ticket.ticket_price) }}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              class="status-toggle-button"
-              :class="Number(ticket.is_active) === 0 ? 'inactive' : 'active'"
-              :disabled="ticketState.isSubmitting"
-              @click="toggleTicketStatus(ticket)"
-            >
-              {{ Number(ticket.is_active) === 0 ? '設為啟用' : '設為停用' }}
-            </button>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <div
-      v-if="rentalState.isPriceDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeRentalDialogs"
-    >
-      <aside class="side-dialog" aria-label="調整裝備價格">
-        <div class="dialog-header">
-          <h3>調整裝備價格</h3>
-          <button
-            type="button"
-            class="dialog-close-button"
-            aria-label="關閉調整裝備價格視窗"
-            @click="closeRentalDialogs"
-          >
-            X
-          </button>
-        </div>
-
-        <form class="form-grid" @submit.prevent="submitRentalPriceUpdate">
-          <label>
-            裝備代碼
-            <input :value="rentalState.priceForm.rental_code" type="text" disabled />
-          </label>
-
-          <label>
-            裝備名稱
-            <input :value="rentalState.priceForm.rental_name" type="text" disabled />
-          </label>
-
-          <label>
-            類別
-            <input :value="rentalState.priceForm.category_name" type="text" disabled />
-          </label>
-
-          <label>
-            租借價格
-            <input
-              v-model.number="rentalState.priceForm.rental_price"
-              type="number"
-              min="0"
-              required
-            />
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" class="primary-button" :disabled="rentalState.isSubmitting">
-              {{ rentalState.isSubmitting ? '儲存中...' : '儲存價格' }}
-            </button>
-            <button type="button" class="secondary-button" @click="closeRentalDialogs">
-              取消
-            </button>
-          </div>
-        </form>
-      </aside>
-    </div>
-
-    <div
-      v-if="rentalState.isCreateDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeRentalDialogs"
-    >
-      <aside class="side-dialog" aria-label="新增裝備">
-        <div class="dialog-header">
-          <h3>新增裝備</h3>
-          <button
-            type="button"
-            class="dialog-close-button"
-            aria-label="關閉新增裝備視窗"
-            @click="closeRentalDialogs"
-          >
-            X
-          </button>
-        </div>
-
-        <form class="form-grid" @submit.prevent="submitNewRental">
-          <label>
-            裝備名稱
-            <input v-model.trim="rentalState.createForm.rental_name" type="text" required />
-          </label>
-
-          <label>
-            類別
-            <select v-model.number="rentalState.createForm.category_id" required>
-              <option :value="null" disabled>請選擇租借裝備類別</option>
-              <option
-                v-for="category in rentalCategoryOptions"
-                :key="category.category_id"
-                :value="Number(category.category_id)"
-              >
-                {{ category.category_name }}
-              </option>
-            </select>
-          </label>
-
-          <label>
-            租借價格
-            <input
-              v-model.number="rentalState.createForm.rental_price"
-              type="number"
-              min="0"
-              required
-            />
-          </label>
-
-          <label>
-            啟用狀態
-            <select v-model.number="rentalState.createForm.is_active">
-              <option :value="1">啟用</option>
-              <option :value="0">停用</option>
-            </select>
-          </label>
-
-          <label>
-            備註
-            <textarea v-model.trim="rentalState.createForm.note" rows="3" />
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" class="primary-button" :disabled="rentalState.isSubmitting">
-              {{ rentalState.isSubmitting ? '建立中...' : '建立裝備' }}
-            </button>
-            <button type="button" class="secondary-button" @click="closeRentalDialogs">
-              取消
-            </button>
-          </div>
-        </form>
-      </aside>
-    </div>
-
-    <div
-      v-if="rentalState.isSettingsDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeRentalDialogs"
-    >
-      <aside class="side-dialog" aria-label="裝備設定">
-        <div class="dialog-header">
-          <h3>裝備設定</h3>
-          <button
-            type="button"
-            class="dialog-close-button"
-            aria-label="關閉裝備設定視窗"
-            @click="closeRentalDialogs"
-          >
-            X
-          </button>
-        </div>
-
-        <div class="settings-list">
-          <div
-            v-for="rental in rentalState.list"
-            :key="rental.rental_id"
-            class="settings-item"
-          >
-            <div class="settings-copy">
-              <strong>{{ rental.rental_name }}</strong>
-              <span>
-                {{ rental.rental_code }} | {{ rental.category_name || '未分類' }} |
-                ${{ formatPrice(rental.rental_price) }}
-              </span>
-            </div>
-
-            <button
-              type="button"
-              class="status-toggle-button"
-              :class="Number(rental.is_active) === 0 ? 'inactive' : 'active'"
-              :disabled="rentalState.isSubmitting"
-              @click="toggleRentalStatus(rental)"
-            >
-              {{ Number(rental.is_active) === 0 ? '設為啟用' : '設為停用' }}
-            </button>
-          </div>
-        </div>
-      </aside>
-    </div>
-
-    <div
-      v-if="productState.isPriceDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeProductDialogs"
-    >
-      <aside class="side-dialog" aria-label="調整商品價格">
-        <div class="dialog-header">
-          <h3>調整商品價格</h3>
-          <button
-            type="button"
-            class="dialog-close-button"
-            aria-label="關閉調整商品價格視窗"
-            @click="closeProductDialogs"
-          >
-            X
-          </button>
-        </div>
-
-        <form class="form-grid" @submit.prevent="submitProductPriceUpdate">
-          <label>
-            商品代碼
-            <input :value="productState.priceForm.product_code" type="text" disabled />
-          </label>
-
-          <label>
-            商品名稱
-            <input :value="productState.priceForm.product_name" type="text" disabled />
-          </label>
-
-          <label>
-            商品分類
-            <input :value="productState.priceForm.category_name" type="text" disabled />
-          </label>
-
-          <label>
-            庫存
-            <input :value="formatStockQty(productState.priceForm.stock_qty)" type="number" disabled />
-          </label>
-
-          <label>
-            售價
-            <input
-              v-model.number="productState.priceForm.product_price"
-              type="number"
-              min="0"
-              required
-            />
-          </label>
-
-          <div class="form-actions">
-            <button type="submit" class="primary-button" :disabled="productState.isSubmitting">
-              {{ productState.isSubmitting ? '儲存中...' : '儲存價格' }}
-            </button>
-            <button type="button" class="secondary-button" @click="closeProductDialogs">
-              取消
-            </button>
-          </div>
-        </form>
-      </aside>
-    </div>
-
-    <div
-      v-if="productState.isCreateDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeProductDialogs"
-    >
-      <aside class="side-dialog" aria-label="新增商品">
-        <div class="dialog-header">
-          <h3>新增商品</h3>
-          <button
-            type="button"
-            class="dialog-close-button"
-            aria-label="關閉新增商品視窗"
-            @click="closeProductDialogs"
-          >
-            X
-          </button>
-        </div>
-
-        <form class="form-grid" @submit.prevent="submitNewProduct">
-          <label>
-            商品名稱
-            <input v-model.trim="productState.createForm.product_name" type="text" required />
-          </label>
-
-          <label>
-            類別
-            <select v-model.number="productState.createForm.category_id" required>
-              <option :value="null" disabled>請選擇商品類別</option>
-              <option
-                v-for="category in productCategoryOptions"
-                :key="category.category_id"
-                :value="Number(category.category_id)"
-              >
-                {{ category.category_name }}
-              </option>
-            </select>
-          </label>
-
-          <label>
-            售價
-            <input
-              v-model.number="productState.createForm.product_price"
-              type="number"
-              min="0"
-              required
-            />
-          </label>
-
-          <label>
+          <label v-if="dialogState.type === 'product'">
             庫存數量
+            <input :value="formatStockQty(currentDialogState.priceForm.stock_qty)" type="number" disabled />
+          </label>
+
+          <label>
+            價格
             <input
-              v-model.number="productState.createForm.stock_qty"
+              v-model.number="currentDialogState.priceForm.price"
               type="number"
               min="0"
               required
             />
           </label>
 
-          <label>
-            啟用狀態
-            <select v-model.number="productState.createForm.is_active">
-              <option :value="1">啟用</option>
-              <option :value="0">停用</option>
-            </select>
-          </label>
-
-          <label>
-            備註
-            <textarea v-model.trim="productState.createForm.note" rows="3" />
-          </label>
-
           <div class="form-actions">
-            <button type="submit" class="primary-button" :disabled="productState.isSubmitting">
-              {{ productState.isSubmitting ? '建立中...' : '建立商品' }}
+            <button type="submit" class="primary-button" :disabled="currentDialogState.isSubmitting">
+              {{ currentDialogState.isSubmitting ? '儲存中...' : '儲存價格' }}
             </button>
-            <button type="button" class="secondary-button" @click="closeProductDialogs">
+            <button type="button" class="secondary-button ghost-button" @click="closeDialog">
               取消
             </button>
           </div>
@@ -660,46 +133,150 @@
       </aside>
     </div>
 
-    <div
-      v-if="productState.isSettingsDialogOpen"
-      class="dialog-overlay"
-      @click.self="closeProductDialogs"
-    >
-      <aside class="side-dialog" aria-label="商品設定">
+    <div v-if="dialogState.mode === 'create'" class="dialog-overlay" @click.self="closeDialog">
+      <aside class="side-dialog" aria-label="新增項目">
         <div class="dialog-header">
-          <h3>商品設定</h3>
+          <h3>新增項目</h3>
           <button
             type="button"
             class="dialog-close-button"
-            aria-label="關閉商品設定視窗"
-            @click="closeProductDialogs"
+            aria-label="關閉新增項目視窗"
+            @click="closeDialog"
           >
             X
           </button>
         </div>
 
+        <form class="form-grid" @submit.prevent="submitCreate">
+          <div class="dialog-section">
+            <span class="dialog-section-label">大分類</span>
+            <div class="dialog-tabs" role="tablist" aria-label="新增項目大分類">
+              <button
+                v-for="tab in itemTabs"
+                :key="`create-${tab.key}`"
+                type="button"
+                class="dialog-tab"
+                :class="{ active: createForm.itemType === tab.key }"
+                @click="setCreateType(tab.key)"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+          </div>
+
+          <label>
+            項目名稱
+            <input v-model.trim="createForm.name" type="text" required />
+          </label>
+
+          <label>
+            小分類
+            <select v-model.number="createForm.category_id" required>
+              <option :value="null" disabled>請選擇小分類</option>
+              <option
+                v-for="category in currentCreateCategories"
+                :key="category.category_id"
+                :value="Number(category.category_id)"
+              >
+                {{ category.category_name }}
+              </option>
+            </select>
+          </label>
+
+          <label>
+            價格
+            <input v-model.number="createForm.price" type="number" min="0" required />
+          </label>
+
+          <label v-if="createForm.itemType === 'product'">
+            庫存數量
+            <input v-model.number="createForm.stock_qty" type="number" min="0" required />
+          </label>
+
+          <label>
+            啟用狀態
+            <select v-model.number="createForm.is_active">
+              <option :value="1">啟用</option>
+              <option :value="0">停用</option>
+            </select>
+          </label>
+
+          <label>
+            備註
+            <textarea v-model.trim="createForm.note" rows="3" />
+          </label>
+
+          <p v-if="currentDialogState.errorMessage" class="section-message error dialog-message">
+            {{ currentDialogState.errorMessage }}
+          </p>
+
+          <div class="form-actions">
+            <button type="submit" class="primary-button" :disabled="currentDialogState.isSubmitting">
+              {{ currentDialogState.isSubmitting ? '建立中...' : '建立項目' }}
+            </button>
+            <button type="button" class="secondary-button ghost-button" @click="closeDialog">
+              取消
+            </button>
+          </div>
+        </form>
+      </aside>
+    </div>
+
+    <div v-if="dialogState.mode === 'settings'" class="dialog-overlay" @click.self="closeDialog">
+      <aside class="side-dialog settings-dialog" aria-label="項目設定">
+        <div class="dialog-header">
+          <h3>項目設定</h3>
+          <button
+            type="button"
+            class="dialog-close-button"
+            aria-label="關閉項目設定視窗"
+            @click="closeDialog"
+          >
+            X
+          </button>
+        </div>
+
+        <div class="settings-toolbar">
+          <div class="dialog-section">
+            <span class="dialog-section-label">大分類</span>
+            <div class="dialog-tabs" role="tablist" aria-label="項目設定大分類">
+              <button
+                v-for="tab in itemTabs"
+                :key="`settings-${tab.key}`"
+                type="button"
+                class="dialog-tab"
+                :class="{ active: dialogState.type === tab.key }"
+                @click="dialogState.type = tab.key"
+              >
+                {{ tab.label }}
+              </button>
+            </div>
+          </div>
+
+          <p v-if="currentDialogState.errorMessage" class="section-message error dialog-message">
+            {{ currentDialogState.errorMessage }}
+          </p>
+        </div>
+
         <div class="settings-list">
           <div
-            v-for="product in productState.list"
-            :key="product.product_id"
+            v-for="item in currentDialogState.list"
+            :key="getItemId(dialogState.type, item)"
             class="settings-item"
           >
             <div class="settings-copy">
-              <strong>{{ product.product_name }}</strong>
-              <span>
-                {{ product.product_code }} | {{ product.category_name || '未分類' }} |
-                庫存 {{ formatStockQty(product.stock_qty) }} | ${{ formatPrice(product.product_price) }}
-              </span>
+              <strong>{{ getItemName(dialogState.type, item) }}</strong>
+              <span>{{ getItemSummary(dialogState.type, item) }}</span>
             </div>
 
             <button
               type="button"
               class="status-toggle-button"
-              :class="Number(product.is_active) === 0 ? 'inactive' : 'active'"
-              :disabled="productState.isSubmitting"
-              @click="toggleProductStatus(product)"
+              :class="Number(item.is_active) === 0 ? 'inactive' : 'active'"
+              :disabled="currentDialogState.isSubmitting"
+              @click="toggleStatus(dialogState.type, item)"
             >
-              {{ Number(product.is_active) === 0 ? '設為啟用' : '設為停用' }}
+              {{ Number(item.is_active) === 0 ? '設為啟用' : '設為停用' }}
             </button>
           </div>
         </div>
@@ -711,27 +288,63 @@
 <script>
 import axios from 'axios'
 
-const createEmptyTicketForm = () => ({
-  ticket_name: '',
-  category_id: null,
-  ticket_price: 0,
-  is_active: 1,
-  note: '',
+const ITEM_CONFIGS = {
+  ticket: {
+    label: '票券',
+    endpoint: '/api/ticket',
+    categoryEndpoint: '/api/ticket_category',
+    idField: 'ticket_id',
+    codeField: 'ticket_code',
+    nameField: 'ticket_name',
+    priceField: 'ticket_price',
+    createNameField: 'ticket_name',
+    updateIdField: 'ticket_id',
+  },
+  rental: {
+    label: '租借裝備',
+    endpoint: '/api/rental_equipment',
+    categoryEndpoint: '/api/rental_equipment_category',
+    idField: 'rental_id',
+    codeField: 'rental_code',
+    nameField: 'rental_name',
+    priceField: 'rental_price',
+    createNameField: 'rental_name',
+    updateIdField: 'rental_id',
+  },
+  product: {
+    label: '商品',
+    endpoint: '/api/product',
+    categoryEndpoint: '/api/product_category',
+    idField: 'product_id',
+    codeField: 'product_code',
+    nameField: 'product_name',
+    priceField: 'product_price',
+    createNameField: 'product_name',
+    updateIdField: 'product_id',
+  },
+}
+
+const createEmptyListState = () => ({
+  list: [],
+  isLoading: false,
+  isSubmitting: false,
+  errorMessage: '',
+  selectedId: null,
+  priceForm: {
+    code: '',
+    name: '',
+    category_name: '',
+    stock_qty: 0,
+    price: 0,
+  },
 })
 
-const createEmptyRentalForm = () => ({
-  rental_name: '',
+const createEmptyCreateForm = (itemType = 'ticket') => ({
+  itemType,
+  name: '',
   category_id: null,
-  rental_price: 0,
-  is_active: 1,
-  note: '',
-})
-
-const createEmptyProductForm = () => ({
-  product_name: '',
-  category_id: null,
-  product_price: 0,
-  stock_qty: 0,
+  price: 0,
+  stock_qty: itemType === 'product' ? 0 : null,
   is_active: 1,
   note: '',
 })
@@ -739,456 +352,290 @@ const createEmptyProductForm = () => ({
 export default {
   data() {
     return {
-      ticketState: {
-        list: [],
-        isLoading: false,
-        isSubmitting: false,
-        errorMessage: '',
-        isPriceDialogOpen: false,
-        isCreateDialogOpen: false,
-        isSettingsDialogOpen: false,
-        selectedId: null,
-        priceForm: {
-          ticket_code: '',
-          ticket_name: '',
-          category_name: '',
-          ticket_price: 0,
-        },
-        createForm: createEmptyTicketForm(),
+      activeType: 'ticket',
+      dialogState: {
+        mode: '',
+        type: 'ticket',
       },
-      rentalState: {
-        list: [],
-        isLoading: false,
-        isSubmitting: false,
-        errorMessage: '',
-        isPriceDialogOpen: false,
-        isCreateDialogOpen: false,
-        isSettingsDialogOpen: false,
-        selectedId: null,
-        priceForm: {
-          rental_code: '',
-          rental_name: '',
-          category_name: '',
-          rental_price: 0,
-        },
-        createForm: createEmptyRentalForm(),
-      },
-      productState: {
-        list: [],
-        isLoading: false,
-        isSubmitting: false,
-        errorMessage: '',
-        isPriceDialogOpen: false,
-        isCreateDialogOpen: false,
-        isSettingsDialogOpen: false,
-        selectedId: null,
-        priceForm: {
-          product_code: '',
-          product_name: '',
-          category_name: '',
-          stock_qty: 0,
-          product_price: 0,
-        },
-        createForm: createEmptyProductForm(),
-      },
+      createForm: createEmptyCreateForm(),
+      ticketState: createEmptyListState(),
+      rentalState: createEmptyListState(),
+      productState: createEmptyListState(),
       ticketCategoryOptions: [],
       rentalCategoryOptions: [],
       productCategoryOptions: [],
     }
   },
 
+  computed: {
+    itemTabs() {
+      return Object.entries(ITEM_CONFIGS).map(([key, config]) => ({
+        key,
+        label: config.label,
+      }))
+    },
+
+    activeConfig() {
+      return ITEM_CONFIGS[this.activeType]
+    },
+
+    activeState() {
+      return this.getState(this.activeType)
+    },
+
+    activeGroups() {
+      return this.groupItemsByCategory(this.activeState.list)
+    },
+
+    currentDialogConfig() {
+      return ITEM_CONFIGS[this.dialogState.type]
+    },
+
+    currentDialogState() {
+      return this.getState(this.dialogState.type)
+    },
+
+    currentCreateCategories() {
+      return this.getCategoryOptions(this.createForm.itemType)
+    },
+  },
+
   mounted() {
-    this.fetchTicketList()
-    this.fetchTicketCategories()
-    this.fetchRentalList()
-    this.fetchRentalCategories()
-    this.fetchProductCategories()
-    this.fetchProductList()
+    this.fetchAllData()
   },
 
   methods: {
-    async fetchTicketList() {
-      this.ticketState.isLoading = true
-      this.ticketState.errorMessage = ''
+    async fetchAllData() {
+      await Promise.all([
+        this.fetchList('ticket'),
+        this.fetchList('rental'),
+        this.fetchList('product'),
+        this.fetchCategories('ticket'),
+        this.fetchCategories('rental'),
+        this.fetchCategories('product'),
+      ])
+    },
+
+    getState(type) {
+      return this[`${type}State`]
+    },
+
+    getCategoryOptions(type) {
+      if (type === 'ticket') {
+        return this.ticketCategoryOptions
+      }
+
+      if (type === 'rental') {
+        return this.rentalCategoryOptions
+      }
+
+      return this.productCategoryOptions
+    },
+
+    async fetchList(type) {
+      const state = this.getState(type)
+      state.isLoading = true
+      state.errorMessage = ''
 
       try {
-        const res = await axios.get('/api/ticket')
-        this.ticketState.list = Array.isArray(res.data) ? res.data : []
+        const res = await axios.get(ITEM_CONFIGS[type].endpoint)
+        state.list = Array.isArray(res.data) ? res.data : []
       } catch (err) {
-        console.error('Failed to fetch ticket list', err)
-        this.ticketState.errorMessage = '票券資料讀取失敗'
+        console.error(`Failed to fetch ${type} list`, err)
+        state.errorMessage = `${ITEM_CONFIGS[type].label}資料讀取失敗`
       } finally {
-        this.ticketState.isLoading = false
+        state.isLoading = false
       }
     },
 
-    async fetchTicketCategories() {
+    async fetchCategories(type) {
       try {
-        const res = await axios.get('/api/ticket_category')
-        this.ticketCategoryOptions = Array.isArray(res.data) ? res.data : []
+        const res = await axios.get(ITEM_CONFIGS[type].categoryEndpoint)
+        this.setCategoryOptions(type, Array.isArray(res.data) ? res.data : [])
       } catch (err) {
-        console.error('Failed to fetch ticket categories', err)
-        this.ticketCategoryOptions = []
+        console.error(`Failed to fetch ${type} categories`, err)
+        this.setCategoryOptions(type, [])
       }
     },
 
-    async fetchRentalList() {
-      this.rentalState.isLoading = true
-      this.rentalState.errorMessage = ''
-
-      try {
-        const res = await axios.get('/api/rental_equipment')
-        this.rentalState.list = Array.isArray(res.data) ? res.data : []
-      } catch (err) {
-        console.error('Failed to fetch rental equipment list', err)
-        this.rentalState.errorMessage = '租借裝備資料讀取失敗'
-      } finally {
-        this.rentalState.isLoading = false
-      }
-    },
-
-    async fetchRentalCategories() {
-      try {
-        const res = await axios.get('/api/rental_equipment_category')
-        this.rentalCategoryOptions = Array.isArray(res.data) ? res.data : []
-      } catch (err) {
-        console.error('Failed to fetch rental categories', err)
-        this.rentalCategoryOptions = []
-      }
-    },
-
-    async fetchProductList() {
-      this.productState.isLoading = true
-      this.productState.errorMessage = ''
-
-      try {
-        const res = await axios.get('/api/product')
-        this.productState.list = Array.isArray(res.data) ? res.data : []
-      } catch (err) {
-        console.error('Failed to fetch product list', err)
-        this.productState.errorMessage = '商品資料讀取失敗'
-      } finally {
-        this.productState.isLoading = false
-      }
-    },
-
-    async fetchProductCategories() {
-      try {
-        const res = await axios.get('/api/product_category')
-        this.productCategoryOptions = Array.isArray(res.data) ? res.data : []
-      } catch (err) {
-        console.error('Failed to fetch product categories', err)
-        this.productCategoryOptions = []
-      }
-    },
-
-    openTicketPriceDialog(ticket) {
-      this.ticketState.selectedId = ticket.ticket_id
-      this.ticketState.priceForm = {
-        ticket_code: ticket.ticket_code ?? '',
-        ticket_name: ticket.ticket_name ?? '',
-        category_name: ticket.category_name ?? '',
-        ticket_price: Number(ticket.ticket_price ?? 0),
-      }
-      this.ticketState.isPriceDialogOpen = true
-      this.ticketState.isCreateDialogOpen = false
-      this.ticketState.isSettingsDialogOpen = false
-    },
-
-    openTicketCreateDialog() {
-      this.ticketState.createForm = createEmptyTicketForm()
-      this.ticketState.isCreateDialogOpen = true
-      this.ticketState.isPriceDialogOpen = false
-      this.ticketState.isSettingsDialogOpen = false
-      this.ticketState.selectedId = null
-    },
-
-    openTicketSettingsDialog() {
-      this.ticketState.isSettingsDialogOpen = true
-      this.ticketState.isCreateDialogOpen = false
-      this.ticketState.isPriceDialogOpen = false
-      this.ticketState.selectedId = null
-    },
-
-    closeTicketDialogs() {
-      this.ticketState.isPriceDialogOpen = false
-      this.ticketState.isCreateDialogOpen = false
-      this.ticketState.isSettingsDialogOpen = false
-      this.ticketState.selectedId = null
-    },
-
-    async submitTicketPriceUpdate() {
-      if (!this.ticketState.selectedId) {
+    setCategoryOptions(type, options) {
+      if (type === 'ticket') {
+        this.ticketCategoryOptions = options
         return
       }
 
-      this.ticketState.isSubmitting = true
-      this.ticketState.errorMessage = ''
-
-      try {
-        await axios.post(`/api/ticket/${this.ticketState.selectedId}`, {
-          ticket_id: this.ticketState.selectedId,
-          ticket_price: Number(this.ticketState.priceForm.ticket_price),
-        })
-
-        await this.fetchTicketList()
-        this.closeTicketDialogs()
-      } catch (err) {
-        console.error('Failed to update ticket price', err)
-        this.ticketState.errorMessage = '更新票券價格失敗'
-      } finally {
-        this.ticketState.isSubmitting = false
-      }
-    },
-
-    async submitNewTicket() {
-      this.ticketState.isSubmitting = true
-      this.ticketState.errorMessage = ''
-
-      try {
-        await axios.post('/api/ticket', {
-          ticket_name: this.ticketState.createForm.ticket_name,
-          category_id: Number(this.ticketState.createForm.category_id),
-          ticket_price: Number(this.ticketState.createForm.ticket_price),
-          is_active: Number(this.ticketState.createForm.is_active),
-          note: this.ticketState.createForm.note,
-        })
-
-        await this.fetchTicketList()
-        this.closeTicketDialogs()
-      } catch (err) {
-        console.error('Failed to create ticket', err)
-        this.ticketState.errorMessage = '新增票券失敗'
-      } finally {
-        this.ticketState.isSubmitting = false
-      }
-    },
-
-    async toggleTicketStatus(ticket) {
-      this.ticketState.isSubmitting = true
-      this.ticketState.errorMessage = ''
-
-      try {
-        await axios.post(`/api/ticket/${ticket.ticket_id}/status`, {
-          ticket_id: ticket.ticket_id,
-          is_active: Number(ticket.is_active) === 0 ? 1 : 0,
-        })
-
-        await this.fetchTicketList()
-      } catch (err) {
-        console.error('Failed to toggle ticket status', err)
-        this.ticketState.errorMessage = '更新票券啟用狀態失敗'
-      } finally {
-        this.ticketState.isSubmitting = false
-      }
-    },
-
-    openRentalPriceDialog(rental) {
-      this.rentalState.selectedId = rental.rental_id
-      this.rentalState.priceForm = {
-        rental_code: rental.rental_code ?? '',
-        rental_name: rental.rental_name ?? '',
-        category_name: rental.category_name ?? '',
-        rental_price: Number(rental.rental_price ?? 0),
-      }
-      this.rentalState.isPriceDialogOpen = true
-      this.rentalState.isCreateDialogOpen = false
-      this.rentalState.isSettingsDialogOpen = false
-    },
-
-    openRentalCreateDialog() {
-      this.rentalState.createForm = createEmptyRentalForm()
-      this.rentalState.isCreateDialogOpen = true
-      this.rentalState.isPriceDialogOpen = false
-      this.rentalState.isSettingsDialogOpen = false
-      this.rentalState.selectedId = null
-    },
-
-    openRentalSettingsDialog() {
-      this.rentalState.isSettingsDialogOpen = true
-      this.rentalState.isCreateDialogOpen = false
-      this.rentalState.isPriceDialogOpen = false
-      this.rentalState.selectedId = null
-    },
-
-    closeRentalDialogs() {
-      this.rentalState.isPriceDialogOpen = false
-      this.rentalState.isCreateDialogOpen = false
-      this.rentalState.isSettingsDialogOpen = false
-      this.rentalState.selectedId = null
-    },
-
-    async submitRentalPriceUpdate() {
-      if (!this.rentalState.selectedId) {
+      if (type === 'rental') {
+        this.rentalCategoryOptions = options
         return
       }
 
-      this.rentalState.isSubmitting = true
-      this.rentalState.errorMessage = ''
+      this.productCategoryOptions = options
+    },
 
-      try {
-        await axios.post(`/api/rental_equipment/${this.rentalState.selectedId}`, {
-          rental_id: this.rentalState.selectedId,
-          rental_price: Number(this.rentalState.priceForm.rental_price),
-        })
+    getItemId(type, item) {
+      return item?.[ITEM_CONFIGS[type].idField]
+    },
 
-        await this.fetchRentalList()
-        this.closeRentalDialogs()
-      } catch (err) {
-        console.error('Failed to update rental equipment price', err)
-        this.rentalState.errorMessage = '更新裝備價格失敗'
-      } finally {
-        this.rentalState.isSubmitting = false
+    getItemName(type, item) {
+      return item?.[ITEM_CONFIGS[type].nameField] ?? ''
+    },
+
+    getItemPrice(type, item) {
+      return item?.[ITEM_CONFIGS[type].priceField] ?? 0
+    },
+
+    getItemCode(type, item) {
+      return item?.[ITEM_CONFIGS[type].codeField] ?? ''
+    },
+
+    getItemSummary(type, item) {
+      const summary = [
+        this.getItemCode(type, item),
+        item?.category_name || '未分類',
+      ]
+
+      if (type === 'product') {
+        summary.push(`庫存 ${this.formatStockQty(item.stock_qty)}`)
+      }
+
+      summary.push(`$${this.formatPrice(this.getItemPrice(type, item))}`)
+
+      return summary.join(' | ')
+    },
+
+    openPriceDialog(type, item) {
+      const state = this.getState(type)
+      state.selectedId = this.getItemId(type, item)
+      state.errorMessage = ''
+      state.priceForm = {
+        code: this.getItemCode(type, item),
+        name: this.getItemName(type, item),
+        category_name: item?.category_name ?? '',
+        stock_qty: Number(item?.stock_qty ?? 0),
+        price: Number(this.getItemPrice(type, item)),
+      }
+      this.dialogState = {
+        mode: 'price',
+        type,
       }
     },
 
-    async submitNewRental() {
-      this.rentalState.isSubmitting = true
-      this.rentalState.errorMessage = ''
-
-      try {
-        await axios.post('/api/rental_equipment', {
-          rental_name: this.rentalState.createForm.rental_name,
-          category_id: Number(this.rentalState.createForm.category_id),
-          rental_price: Number(this.rentalState.createForm.rental_price),
-          is_active: Number(this.rentalState.createForm.is_active),
-          note: this.rentalState.createForm.note,
-        })
-
-        await this.fetchRentalList()
-        this.closeRentalDialogs()
-      } catch (err) {
-        console.error('Failed to create rental equipment', err)
-        this.rentalState.errorMessage = '新增裝備失敗'
-      } finally {
-        this.rentalState.isSubmitting = false
+    openCreateDialog(type) {
+      const state = this.getState(type)
+      state.errorMessage = ''
+      state.selectedId = null
+      this.createForm = createEmptyCreateForm(type)
+      this.dialogState = {
+        mode: 'create',
+        type,
       }
     },
 
-    async toggleRentalStatus(rental) {
-      this.rentalState.isSubmitting = true
-      this.rentalState.errorMessage = ''
-
-      try {
-        await axios.post(`/api/rental_equipment/${rental.rental_id}/status`, {
-          rental_id: rental.rental_id,
-          is_active: Number(rental.is_active) === 0 ? 1 : 0,
-        })
-
-        await this.fetchRentalList()
-      } catch (err) {
-        console.error('Failed to toggle rental equipment status', err)
-        this.rentalState.errorMessage = '更新裝備啟用狀態失敗'
-      } finally {
-        this.rentalState.isSubmitting = false
+    openSettingsDialog(type) {
+      this.getState(type).errorMessage = ''
+      this.dialogState = {
+        mode: 'settings',
+        type,
       }
     },
 
-    openProductPriceDialog(product) {
-      this.productState.selectedId = product.product_id
-      this.productState.priceForm = {
-        product_code: product.product_code ?? '',
-        product_name: product.product_name ?? '',
-        category_name: product.category_name ?? '',
-        stock_qty: Number(product.stock_qty ?? 0),
-        product_price: Number(product.product_price ?? 0),
+    closeDialog() {
+      this.dialogState = {
+        mode: '',
+        type: this.activeType,
       }
-      this.productState.isPriceDialogOpen = true
-      this.productState.isCreateDialogOpen = false
-      this.productState.isSettingsDialogOpen = false
     },
 
-    openProductCreateDialog() {
-      this.productState.createForm = createEmptyProductForm()
-      this.productState.isCreateDialogOpen = true
-      this.productState.isPriceDialogOpen = false
-      this.productState.isSettingsDialogOpen = false
-      this.productState.selectedId = null
+    setCreateType(type) {
+      this.createForm.itemType = type
+      this.createForm.category_id = null
+      this.createForm.stock_qty = type === 'product' ? 0 : null
+      this.getState(type).errorMessage = ''
+      this.dialogState.type = type
     },
 
-    openProductSettingsDialog() {
-      this.productState.isSettingsDialogOpen = true
-      this.productState.isCreateDialogOpen = false
-      this.productState.isPriceDialogOpen = false
-      this.productState.selectedId = null
-    },
+    async submitPriceUpdate() {
+      const type = this.dialogState.type
+      const state = this.getState(type)
+      const config = ITEM_CONFIGS[type]
 
-    closeProductDialogs() {
-      this.productState.isPriceDialogOpen = false
-      this.productState.isCreateDialogOpen = false
-      this.productState.isSettingsDialogOpen = false
-      this.productState.selectedId = null
-    },
-
-    async submitProductPriceUpdate() {
-      if (!this.productState.selectedId) {
+      if (!state.selectedId) {
         return
       }
 
-      this.productState.isSubmitting = true
-      this.productState.errorMessage = ''
+      state.isSubmitting = true
+      state.errorMessage = ''
 
       try {
-        await axios.post(`/api/product/${this.productState.selectedId}`, {
-          product_id: this.productState.selectedId,
-          product_price: Number(this.productState.priceForm.product_price),
+        await axios.post(`${config.endpoint}/${state.selectedId}`, {
+          [config.updateIdField]: state.selectedId,
+          [config.priceField]: Number(state.priceForm.price),
         })
 
-        await this.fetchProductList()
-        this.closeProductDialogs()
+        await this.fetchList(type)
+        this.closeDialog()
       } catch (err) {
-        console.error('Failed to update product price', err)
-        this.productState.errorMessage = '更新商品價格失敗'
+        console.error(`Failed to update ${type} price`, err)
+        state.errorMessage = `更新${config.label}價格失敗`
       } finally {
-        this.productState.isSubmitting = false
+        state.isSubmitting = false
       }
     },
 
-    async submitNewProduct() {
-      this.productState.isSubmitting = true
-      this.productState.errorMessage = ''
+    async submitCreate() {
+      const type = this.createForm.itemType
+      const state = this.getState(type)
+      const config = ITEM_CONFIGS[type]
+
+      state.isSubmitting = true
+      state.errorMessage = ''
+
+      const payload = {
+        [config.createNameField]: this.createForm.name,
+        category_id: Number(this.createForm.category_id),
+        [config.priceField]: Number(this.createForm.price),
+        is_active: Number(this.createForm.is_active),
+        note: this.createForm.note,
+      }
+
+      if (type === 'product') {
+        payload.stock_qty = Number(this.createForm.stock_qty)
+      }
 
       try {
-        await axios.post('/api/product', {
-          product_name: this.productState.createForm.product_name,
-          category_id: Number(this.productState.createForm.category_id),
-          product_price: Number(this.productState.createForm.product_price),
-          stock_qty: Number(this.productState.createForm.stock_qty),
-          is_active: Number(this.productState.createForm.is_active),
-          note: this.productState.createForm.note,
-        })
-
-        await this.fetchProductList()
-        this.closeProductDialogs()
+        await axios.post(config.endpoint, payload)
+        await this.fetchList(type)
+        this.activeType = type
+        this.closeDialog()
       } catch (err) {
-        console.error('Failed to create product', err)
-        this.productState.errorMessage = '新增商品失敗'
+        console.error(`Failed to create ${type}`, err)
+        state.errorMessage = `新增${config.label}失敗`
       } finally {
-        this.productState.isSubmitting = false
+        state.isSubmitting = false
       }
     },
 
-    async toggleProductStatus(product) {
-      this.productState.isSubmitting = true
-      this.productState.errorMessage = ''
+    async toggleStatus(type, item) {
+      const state = this.getState(type)
+      const config = ITEM_CONFIGS[type]
+      const itemId = this.getItemId(type, item)
+
+      state.isSubmitting = true
+      state.errorMessage = ''
 
       try {
-        await axios.post(`/api/product/${product.product_id}/status`, {
-          product_id: product.product_id,
-          is_active: Number(product.is_active) === 0 ? 1 : 0,
+        await axios.post(`${config.endpoint}/${itemId}/status`, {
+          [config.updateIdField]: itemId,
+          is_active: Number(item.is_active) === 0 ? 1 : 0,
         })
 
-        await this.fetchProductList()
+        await this.fetchList(type)
       } catch (err) {
-        console.error('Failed to toggle product status', err)
-        this.productState.errorMessage = '更新商品啟用狀態失敗'
+        console.error(`Failed to toggle ${type} status`, err)
+        state.errorMessage = `更新${config.label}啟用狀態失敗`
       } finally {
-        this.productState.isSubmitting = false
+        state.isSubmitting = false
       }
-    },
-
-    formatPrice(price) {
-      return Number(price ?? 0)
     },
 
     groupItemsByCategory(items) {
@@ -1199,6 +646,7 @@ export default {
         if (!groupedMap.has(categoryName)) {
           groupedMap.set(categoryName, [])
         }
+
         groupedMap.get(categoryName).push(item)
       })
 
@@ -1206,6 +654,10 @@ export default {
         categoryName,
         items: groupedItems,
       }))
+    },
+
+    formatPrice(price) {
+      return Number(price ?? 0)
     },
 
     formatStockQty(stockQty) {
@@ -1217,32 +669,35 @@ export default {
 
 <style scoped>
 .management-view {
-  display: grid;
-  gap: 24px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0 auto;
-  max-width: 2200px;
-  padding: 24px;
+  box-sizing: border-box;
+  height: calc(100vh - 48px);
+  margin: 0;
+  padding: 24px 24px 24px 0;
+  width: 100%;
 }
 
 .management-section {
   background: #fff;
   border: 1px solid #d7dce2;
-  border-radius: 20px;
-  padding: 24px;
+  border-radius: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  height: 95%;
+  overflow: hidden;
+  padding: 28px;
 }
 
 .section-header {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
   gap: 16px;
   justify-content: space-between;
-  margin-bottom: 24px;
 }
 
 .section-header h1,
-.section-header h2,
 .dialog-header h3 {
+  color: #153126;
   margin: 0 0 8px;
 }
 
@@ -1257,25 +712,70 @@ export default {
 }
 
 .section-message {
-  margin: 16px 0;
+  margin: 0;
 }
 
 .section-message.error {
   color: #b00020;
 }
 
-.category-group-list {
-  display: grid;
-  gap: 24px;
+.entry-tabs,
+.dialog-tabs {
+  display: flex;
+  gap: 12px;
+}
+
+.entry-tabs {
+  border-bottom: 1px solid rgba(34, 66, 49, 0.08);
+  margin: 4px 0 0;
+  padding-bottom: 14px;
+}
+
+.entry-tab,
+.dialog-tab,
+.primary-button,
+.secondary-button,
+.status-toggle-button {
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.entry-tab,
+.dialog-tab {
+  background: #edf4ef;
+  border-radius: 999px;
+  color: #577060;
+  font-weight: 800;
+  padding: 12px 22px;
+  transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.entry-tab.active,
+.dialog-tab.active {
+  background: #dff0e4;
+  box-shadow: inset 0 0 0 1px rgba(47, 122, 83, 0.12);
+  color: #1f6f48;
+}
+
+.entry-picker-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .category-group {
   display: grid;
-  gap: 12px;
+  gap: 14px;
+}
+
+.category-group + .category-group {
+  margin-top: 24px;
 }
 
 .category-group-title {
-  border-left: 4px solid #315efb;
+  border-left: 4px solid #2f7a53;
   color: #1d2733;
   font-size: 18px;
   font-weight: 700;
@@ -1283,84 +783,69 @@ export default {
   padding-left: 12px;
 }
 
-.card-list {
+.item-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.product-section .card-list {
-  grid-template-columns: repeat(auto-fill, minmax(220px, 220px));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .item-card {
   align-items: flex-start;
   background: #fff;
-  border: 1px solid #d7dce2;
-  border-radius: 14px;
-  cursor: pointer;
+  border: 1px solid rgba(34, 66, 49, 0.12);
+  border-radius: 25px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 110px;
-  padding: 18px;
+  gap: 14px;
+  min-height: 128px;
+  padding: 20px;
   text-align: left;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
-}
-
-.item-card-copy {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 4px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .item-card:hover,
 .item-card:focus {
-  border-color: #315efb;
-  box-shadow: 0 12px 24px rgba(49, 94, 251, 0.15);
+  border-color: rgba(47, 122, 83, 0.3);
+  box-shadow: 0 16px 30px rgba(30, 64, 47, 0.08);
   outline: none;
   transform: translateY(-2px);
 }
 
 .item-card-top {
-  align-items: center;
+  align-items: flex-start;
   display: flex;
-  gap: 8px;
+  gap: 12px;
   justify-content: space-between;
   width: 100%;
 }
 
-.product-card .item-card-top {
-  align-items: flex-start;
+.item-card-copy {
+  display: grid;
+  gap: 6px;
 }
 
 .item-name {
-  color: #1d2733;
+  color: #153126;
   font-size: 18px;
-  font-weight: 700;
 }
 
 .item-meta {
   color: #5b6572;
-  font-size: 13px;
-}
-
-.item-meta-inline {
-  white-space: nowrap;
+  font-size: 14px;
 }
 
 .item-price {
-  color: #315efb;
-  font-size: 24px;
-  font-weight: 700;
+  color: #0d6b46;
+  font-size: 28px;
+  font-weight: 800;
 }
 
 .status-badge {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 6px 10px;
+  white-space: nowrap;
 }
 
 .status-badge.active {
@@ -1382,15 +867,21 @@ export default {
 
 .side-dialog {
   background: #fff;
-  border-radius: 18px 0 0 18px;
+  border-radius: 24px 0 0 24px;
   box-shadow: -8px 0 24px rgba(0, 0, 0, 0.18);
   box-sizing: border-box;
   height: 100vh;
   margin-left: auto;
-  max-width: 420px;
+  max-width: 460px;
   overflow-y: auto;
   padding: 24px;
-  width: min(420px, 92vw);
+  width: min(460px, 94vw);
+}
+
+.settings-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dialog-header {
@@ -1404,10 +895,28 @@ export default {
 .dialog-close-button {
   background: #fff;
   border: 1px solid #b8c0cc;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  height: 32px;
-  width: 32px;
+  height: 36px;
+  width: 36px;
+}
+
+.dialog-section {
+  display: grid;
+  gap: 10px;
+}
+
+.dialog-section-label {
+  color: #334155;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.settings-toolbar {
+  background: #fff;
+  display: grid;
+  gap: 12px;
+  padding-bottom: 12px;
 }
 
 .form-grid {
@@ -1426,7 +935,7 @@ export default {
 .form-grid select,
 .form-grid textarea {
   border: 1px solid #cbd5e1;
-  border-radius: 8px;
+  border-radius: 10px;
   font: inherit;
   padding: 10px 12px;
 }
@@ -1438,65 +947,91 @@ export default {
 }
 
 .settings-list {
+  align-content: start;
   display: grid;
-  gap: 12px;
+  flex: 1;
+  gap: 10px;
+  grid-auto-rows: min-content;
+  margin-top: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .settings-item {
   align-items: center;
   border: 1px solid #d7dce2;
-  border-radius: 12px;
+  border-radius: 16px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  height: 76px;
+  overflow: hidden;
   justify-content: space-between;
-  padding: 14px;
+  min-height: 76px;
+  padding: 10px 12px;
 }
 
 .settings-copy {
   display: grid;
-  gap: 4px;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+
+.settings-copy strong {
+  color: #153126;
+  line-height: 1.25;
 }
 
 .settings-copy span {
   color: #5b6572;
   font-size: 14px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dialog-message {
+  margin-top: -4px;
 }
 
 .primary-button,
 .secondary-button,
 .status-toggle-button {
-  border-radius: 8px;
-  cursor: pointer;
-  font: inherit;
+  border-radius: 10px;
   padding: 10px 16px;
 }
 
 .primary-button {
-  background: #315efb;
-  border: 1px solid #315efb;
+  background: #1f6f48;
   color: #fff;
 }
 
 .secondary-button {
-  background: #315efb;
-  border: 1px solid #315efb;
-  color: #fff;
+  background: #edf4ef;
+  color: #1f6f48;
+}
+
+.ghost-button {
+  border: 1px solid rgba(31, 111, 72, 0.2);
 }
 
 .status-toggle-button {
-  border: 1px solid transparent;
+  flex: 0 0 108px;
+  align-self: center;
+  min-height: 40px;
   min-width: 108px;
+  padding: 8px 14px;
 }
 
 .status-toggle-button.active {
   background: #fff4e5;
-  border-color: #ffd28a;
   color: #a15c00;
 }
 
 .status-toggle-button.inactive {
   background: #e8f7ee;
-  border-color: #9bd5ae;
   color: #1d7f46;
 }
 
@@ -1505,5 +1040,52 @@ export default {
 .status-toggle-button:disabled {
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+@media (max-width: 1400px) {
+  .item-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .item-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .management-view {
+    height: auto;
+    padding: 16px 16px 16px 0;
+  }
+
+  .management-section {
+    border-radius: 20px;
+    height: auto;
+    padding: 20px;
+  }
+
+  .section-header,
+  .settings-item,
+  .form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .entry-tabs,
+  .dialog-tabs {
+    overflow: auto;
+    padding-bottom: 4px;
+  }
+
+  .entry-tab,
+  .dialog-tab {
+    white-space: nowrap;
+  }
+
+  .item-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
