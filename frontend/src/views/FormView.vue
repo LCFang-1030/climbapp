@@ -18,11 +18,14 @@
           v-for="(section, index) in sections"
           :key="section.title"
           class="form-section"
+          :class="{ 'emergency-section': section.title === '緊急聯絡人' }"
         >
           <div class="section-heading">
             <span class="section-kicker">0{{ index + 1 }}</span>
-            <h3>{{ section.title }}</h3>
-            <p>{{ section.description }}</p>
+            <div class="inline-heading">
+              <h3>{{ section.title }}</h3>
+              <p>{{ section.description }}</p>
+            </div>
           </div>
 
           <div class="fields-grid">
@@ -30,9 +33,12 @@
               v-for="fieldKey in section.fields"
               :key="fieldKey"
               class="field-item"
-              :class="{ full: isFullField(fieldKey) }"
+              :class="fieldClasses(fieldKey)"
             >
-              <label :for="fieldKey">{{ labels[fieldKey] }}</label>
+              <label :for="fieldKey">
+                {{ labels[fieldKey] }}
+                <span v-if="isRequiredField(fieldKey)" class="required-mark">*</span>
+              </label>
 
               <div v-if="fieldKey === 'gender'" class="radio-group">
                 <label
@@ -71,8 +77,10 @@
         <section class="form-section signature-section">
           <div class="section-heading">
             <span class="section-kicker">04</span>
-            <h3>手寫簽名</h3>
-            <p>請於簽名板內簽名，支援滑鼠與觸控操作。</p>
+            <div class="inline-heading">
+              <h3>手寫簽名</h3>
+              <p>請於簽名板內簽名，支援滑鼠與觸控操作。</p>
+            </div>
           </div>
 
           <div class="signature-panel">
@@ -213,8 +221,19 @@ export default {
   },
 
   methods: {
+    isRequiredField(fieldKey) {
+      return fieldKey !== 'idcard' && fieldKey !== 'note'
+    },
+
     isFullField(fieldKey) {
       return ['contact_address', 'emergency_address', 'note'].includes(fieldKey)
+    },
+
+    fieldClasses(fieldKey) {
+      return {
+        full: this.isFullField(fieldKey),
+        third: ['emergency_name', 'emergency_relation', 'emergency_phone'].includes(fieldKey),
+      }
     },
 
     getInputType(fieldKey) {
@@ -348,7 +367,6 @@ export default {
       const requiredFields = [
         'name',
         'nationality',
-        'idcard',
         'phone',
         'birthday',
         'gender',
@@ -482,7 +500,7 @@ export default {
 }
 
 .section-heading {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .section-kicker {
@@ -501,8 +519,15 @@ export default {
   letter-spacing: 0.08em;
 }
 
+.inline-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .section-heading h3 {
-  margin: 0 0 8px;
+  margin: 0;
   color: #14231a;
   font-size: 1.3rem;
 }
@@ -515,7 +540,11 @@ export default {
 .fields-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px;
+  gap: 16px 20px;
+}
+
+.emergency-section .fields-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .field-item {
@@ -528,9 +557,22 @@ export default {
   grid-column: 1 / -1;
 }
 
+.field-item.third {
+  grid-column: span 1;
+}
+
 .field-item label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
   color: #24352a;
   font-weight: 600;
+}
+
+.required-mark {
+  color: #dc2626;
+  font-weight: 800;
 }
 
 .field-item input,
@@ -554,25 +596,47 @@ export default {
 }
 
 .field-item textarea {
-  resize: vertical;
+  resize: none;
   min-height: 110px;
 }
 
 .radio-group {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 12px;
+  align-items: stretch;
 }
 
 .radio-option {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  flex-direction: row;
+  gap: 0;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 36px;
+  padding: 6px 18px;
   border: 1px solid #cddbcf;
   border-radius: 999px;
   background: #fff;
   color: #24352a;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.radio-option span {
+  display: inline-block;
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.radio-option input {
+  margin: 0;
+  width: auto;
+  min-height: auto;
+  flex: 0 0 auto;
 }
 
 .signature-panel {
@@ -721,6 +785,10 @@ export default {
     margin-bottom: 14px;
   }
 
+  .inline-heading {
+    gap: 8px;
+  }
+
   .section-kicker {
     min-width: 40px;
     height: 24px;
@@ -742,6 +810,10 @@ export default {
     grid-column: auto;
   }
 
+  .field-item.third {
+    grid-column: auto;
+  }
+
   .field-item {
     gap: 7px;
   }
@@ -759,6 +831,10 @@ export default {
     border: 1px solid #d7e3da;
     border-radius: 16px;
     background: #f8fbf8;
+  }
+
+  .radio-group {
+    flex-wrap: wrap;
   }
 
   .radio-group {
