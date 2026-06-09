@@ -1187,7 +1187,6 @@ app.get('/api/member_activities', async (req, res) => {
         p.promotion_name,
         p.start_time,
         p.end_time,
-        p.is_active,
         pr.rule_id,
         pr.discount_type,
         pr.discount_value
@@ -1195,6 +1194,24 @@ app.get('/api/member_activities', async (req, res) => {
       LEFT JOIN promotion_rules pr ON pr.promotion_id = p.promotion_id
       WHERE p.is_active = 1
       ORDER BY p.category_id, p.promotion_id, pr.rule_id
+    `);
+
+    const giftCampaigns = await conn.query(`
+      SELECT
+        gc.gift_campaign_id,
+        gc.category_id,
+        gc.campaign_name,
+        gc.start_time,
+        gc.end_time,
+        gi.gift_item_id,
+        gi.gift_name,
+        gi.total_qty,
+        gi.remaining_qty,
+        gi.limit_per_member
+      FROM gift_campaigns gc
+      LEFT JOIN gift_items gi ON gi.gift_campaign_id = gc.gift_campaign_id
+      WHERE gc.is_active = 1
+      ORDER BY gc.category_id, gc.gift_campaign_id, gi.gift_item_id
     `);
 
     const formatDateTime = (value) => {
@@ -1245,7 +1262,6 @@ app.get('/api/member_activities', async (req, res) => {
       if (!list.some((item) => item.activity_id === promotionId)) {
         const discountText = formatDiscountText(promotion.discount_type, promotion.discount_value);
         const periodText = formatPeriodText(promotion.start_time, promotion.end_time);
-
         list.push({
           key: `promotion-${promotionId}`,
           activity_id: promotionId,
@@ -1253,6 +1269,47 @@ app.get('/api/member_activities', async (req, res) => {
           description: periodText ? `${discountText} | ${periodText}` : discountText,
           type: String(promotion.discount_type ?? 'none'),
           value: Number(promotion.discount_value ?? 0),
+          selectable: true,
+        });
+      }
+
+      map.set(categoryId, list);
+      return map;
+    }, new Map());
+
+    const formatGiftItemText = (item) => {
+      const details = [`數量 ${Number(item.remaining_qty ?? 0).toLocaleString('zh-TW')} / ${Number(item.total_qty ?? 0).toLocaleString('zh-TW')}`];
+      if (item.limit_per_member != null) details.push(`每次限額 ${Number(item.limit_per_member)} 個`);
+      return `${item.gift_name} (${details.join(' | ')})`;
+    };
+
+    const giftsByCategoryId = giftCampaigns.reduce((map, campaign) => {
+      const categoryId = Number(campaign.category_id);
+      const campaignId = Number(campaign.gift_campaign_id);
+      const list = map.get(categoryId) ?? [];
+      let entry = list.find((item) => item.activity_id === campaignId);
+
+      if (!entry) {
+        entry = {
+          key: `gift-${campaignId}`,
+          activity_id: campaignId,
+          label: campaign.campaign_name,
+          description: formatPeriodText(campaign.start_time, campaign.end_time),
+          type: 'gift',
+          selectable: false,
+          gift_items: [],
+        };
+        list.push(entry);
+      }
+
+      if (campaign.gift_item_id != null) {
+        entry.gift_items.push({
+          gift_item_id: Number(campaign.gift_item_id),
+          gift_name: campaign.gift_name,
+          total_qty: Number(campaign.total_qty ?? 0),
+          remaining_qty: Number(campaign.remaining_qty ?? 0),
+          limit_per_member: campaign.limit_per_member == null ? null : Number(campaign.limit_per_member),
+          summary: formatGiftItemText(campaign),
         });
       }
 
@@ -1265,7 +1322,10 @@ app.get('/api/member_activities', async (req, res) => {
         category_id: Number(category.category_id),
         category_code: category.category_code,
         category_name: category.category_name,
-        promotions: promotionsByCategoryId.get(Number(category.category_id)) ?? [],
+        promotions: [
+          ...(promotionsByCategoryId.get(Number(category.category_id)) ?? []),
+          ...(giftsByCategoryId.get(Number(category.category_id)) ?? []),
+        ],
       }))
     );
   } catch (err) {
@@ -1275,7 +1335,6 @@ app.get('/api/member_activities', async (req, res) => {
     if (conn) conn.release();
   }
 });
-
 app.post('/api/product', async (req, res) => {
   const {
     product_name,

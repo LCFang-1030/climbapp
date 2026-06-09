@@ -129,6 +129,75 @@ UNLOCK TABLES;
 commit;
 
 --
+-- Table structure for table `gift_campaigns`
+--
+
+DROP TABLE IF EXISTS `gift_campaigns`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `gift_campaigns` (
+  `gift_campaign_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '贈品活動ID',
+  `category_id` bigint(20) unsigned NOT NULL COMMENT '活動分類ID',
+  `campaign_name` varchar(100) NOT NULL COMMENT '贈品活動名稱',
+  `start_time` datetime DEFAULT NULL COMMENT '開始時間',
+  `end_time` datetime DEFAULT NULL COMMENT '結束時間',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1 COMMENT '是否啟用 1=啟用 0=停用',
+  `created_at` datetime DEFAULT current_timestamp() COMMENT '建立時間',
+  PRIMARY KEY (`gift_campaign_id`),
+  KEY `fk_gift_category` (`category_id`),
+  CONSTRAINT `fk_gift_category` FOREIGN KEY (`category_id`) REFERENCES `activity_categories` (`category_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='贈品活動主表';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `gift_campaigns`
+--
+
+LOCK TABLES `gift_campaigns` WRITE;
+/*!40000 ALTER TABLE `gift_campaigns` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `gift_campaigns` VALUES
+(1,2,'開幕送餅乾A','2026-07-01 00:00:00','2026-07-20 00:00:00',1,'2026-06-09 12:12:17'),
+(2,2,'開幕送餅乾B','2026-06-01 00:00:00','2026-06-30 00:00:00',1,'2026-06-09 12:14:53');
+/*!40000 ALTER TABLE `gift_campaigns` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
+-- Table structure for table `gift_items`
+--
+
+DROP TABLE IF EXISTS `gift_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `gift_items` (
+  `gift_item_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '贈品項目ID',
+  `gift_campaign_id` bigint(20) unsigned NOT NULL COMMENT '贈品活動ID',
+  `gift_name` varchar(100) NOT NULL COMMENT '贈品名稱',
+  `total_qty` int(11) NOT NULL COMMENT '總數量',
+  `remaining_qty` int(11) NOT NULL COMMENT '剩餘數量',
+  `limit_per_member` int(11) DEFAULT NULL COMMENT '每人限制數量',
+  PRIMARY KEY (`gift_item_id`),
+  KEY `fk_gift_items` (`gift_campaign_id`),
+  CONSTRAINT `fk_gift_items` FOREIGN KEY (`gift_campaign_id`) REFERENCES `gift_campaigns` (`gift_campaign_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci COMMENT='贈品內容與庫存管理';
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `gift_items`
+--
+
+LOCK TABLES `gift_items` WRITE;
+/*!40000 ALTER TABLE `gift_items` DISABLE KEYS */;
+set autocommit=0;
+INSERT INTO `gift_items` VALUES
+(1,1,'餅乾A',100,50,1),
+(2,2,'餅乾B',60,30,3);
+/*!40000 ALTER TABLE `gift_items` ENABLE KEYS */;
+UNLOCK TABLES;
+commit;
+
+--
 -- Table structure for table `member_passes`
 --
 
@@ -358,11 +427,11 @@ LOCK TABLES `product` WRITE;
 /*!40000 ALTER TABLE `product` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `product` VALUES
-(1,1,'PROD001','白貼',0.00,0,1,NULL,'2026-05-25 03:48:54','2026-06-01 02:57:41'),
-(2,2,'TK0002','月票',1500.00,9999,1,'','2026-06-01 08:07:40','2026-06-01 08:07:40'),
-(3,2,'TK0003','季票',4200.00,9999,1,'','2026-06-01 08:08:33','2026-06-01 08:08:33'),
-(4,2,'TK0004','半年票',8000.00,9999,1,'','2026-06-01 08:08:56','2026-06-01 08:08:56'),
-(6,2,'TK0005','年票',15000.00,9999,1,'','2026-06-01 08:09:45','2026-06-01 08:09:45');
+(1,1,'PROD001','白貼',0.00,0,1,NULL,'2026-05-25 03:48:54','2026-06-08 08:49:29'),
+(2,2,'TK0002','月票',1500.00,9999,1,'','2026-06-01 08:07:40','2026-06-08 08:49:30'),
+(3,2,'TK0003','季票',4200.00,9999,1,'','2026-06-01 08:08:33','2026-06-08 08:49:30'),
+(4,2,'TK0004','半年票',8000.00,9999,1,'','2026-06-01 08:08:56','2026-06-08 08:49:31'),
+(6,2,'TK0005','年票',15000.00,9999,1,'','2026-06-01 08:09:45','2026-06-08 08:49:32');
 /*!40000 ALTER TABLE `product` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -456,7 +525,7 @@ set autocommit=0;
 INSERT INTO `promotion_rules` VALUES
 (1,1,'amount',50.00,NULL),
 (2,2,'percent',0.90,NULL),
-(3,3,' fixed',200.00,NULL);
+(3,3,'fixed',200.00,NULL);
 /*!40000 ALTER TABLE `promotion_rules` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -529,12 +598,12 @@ LOCK TABLES `rental_equipment` WRITE;
 /*!40000 ALTER TABLE `rental_equipment` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `rental_equipment` VALUES
-(1,2,'REN0001','岩鞋',20.00,1,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
-(2,1,'REN0002','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
-(3,1,'REN0003','吊帶',0.00,0,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
-(4,2,'REN0004','粉塊',0.00,0,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
-(5,2,'REN0005','粉袋',0.00,0,NULL,'2026-05-21 10:57:27','2026-06-01 08:24:09'),
-(6,1,'REN0006','岩盔',50.00,0,'','2026-05-22 03:03:22','2026-06-01 08:24:10');
+(1,2,'REN0001','岩鞋',20.00,1,NULL,'2026-05-21 10:57:27','2026-06-08 08:49:25'),
+(2,1,'REN0002','繩索',0.00,1,NULL,'2026-05-21 10:57:27','2026-06-08 08:49:25'),
+(3,1,'REN0003','吊帶',0.00,1,NULL,'2026-05-21 10:57:27','2026-06-08 08:49:26'),
+(4,2,'REN0004','粉塊',0.00,1,NULL,'2026-05-21 10:57:27','2026-06-08 08:49:27'),
+(5,2,'REN0005','粉袋',0.00,1,NULL,'2026-05-21 10:57:27','2026-06-08 08:49:27'),
+(6,1,'REN0006','岩盔',50.00,1,'','2026-05-22 03:03:22','2026-06-08 08:49:28');
 /*!40000 ALTER TABLE `rental_equipment` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -731,15 +800,15 @@ LOCK TABLES `ticket` WRITE;
 /*!40000 ALTER TABLE `ticket` DISABLE KEYS */;
 set autocommit=0;
 INSERT INTO `ticket` VALUES
-(1,1,'TK0001','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(2,1,'TK0002','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(3,1,'TK0003','假日單次',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(4,1,'TK0004','星光票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(5,3,'TK0005','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(6,2,'TK0006','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(7,2,'TK0007','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(8,2,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-01 08:06:29'),
-(9,2,'TK0009','公司票',200.00,1,'','2026-05-22 02:59:39','2026-06-01 08:06:30');
+(1,1,'TK0001','平日單次',300.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:16'),
+(2,1,'TK0002','平日早鳥',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:17'),
+(3,1,'TK0003','假日單次',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:18'),
+(4,1,'TK0004','星光票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:19'),
+(5,3,'TK0005','長期票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:18'),
+(6,2,'TK0006','學生票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:20'),
+(7,2,'TK0007','兒童票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:20'),
+(8,2,'TK0008','體驗票',0.00,1,NULL,'2026-05-21 10:06:13','2026-06-08 08:49:21'),
+(9,2,'TK0009','公司票',200.00,1,'','2026-05-22 02:59:39','2026-06-08 08:49:21');
 /*!40000 ALTER TABLE `ticket` ENABLE KEYS */;
 UNLOCK TABLES;
 commit;
@@ -816,4 +885,4 @@ commit;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
--- Dump completed on 2026-06-05 14:20:45
+-- Dump completed on 2026-06-09 12:46:00

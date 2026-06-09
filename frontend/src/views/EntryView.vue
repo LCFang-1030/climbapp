@@ -335,19 +335,56 @@
 
                       <div v-if="isActivityCategoryExpanded(category.category_id)" class="activity-category-body">
                         <div v-if="category.promotions.length" class="option-list">
-                          <button
+                          <div
                             v-for="activity in category.promotions"
                             :key="activity.key"
-                            type="button"
                             class="option-card"
-                            :class="{ selected: selectedActivityKey === activity.key }"
-                            @click="selectedActivityKey = activity.key"
+                            :class="{ selected: activity.selectable && selectedActivityKey === activity.key, 'is-static': !activity.selectable }"
+                            @click="selectMemberActivity(activity)"
                           >
                             <div class="option-card-heading">
                               <div class="option-card-title">{{ activity.label }}</div>
                               <div class="option-card-subtitle">{{ activity.description }}</div>
                             </div>
-                          </button>
+                            <div v-if="activity.gift_items?.length" class="gift-item-list">
+                              <div
+                                v-for="giftItem in activity.gift_items"
+                                :key="giftItem.gift_item_id"
+                                class="gift-item-card"
+                                :class="{ selected: getGiftItemQuantity(giftItem.gift_item_id) > 0, disabled: giftItemMaxQuantity(giftItem) <= 0 }"
+                                @click.stop="toggleGiftItem(giftItem)"
+                              >
+                                <div class="gift-item-text">
+                                  <strong>{{ giftItem.gift_name }}</strong>
+                                  <span>{{ giftItem.summary }}</span>
+                                </div>
+                                <div class="quantity-controls" @click.stop>
+                                  <button
+                                    v-if="getGiftItemQuantity(giftItem.gift_item_id) > 0"
+                                    type="button"
+                                    class="quantity-button secondary"
+                                    @click.stop="changeGiftItemQuantity(giftItem, -1)"
+                                  >
+                                    -
+                                  </button>
+                                  <span
+                                    v-if="getGiftItemQuantity(giftItem.gift_item_id) > 0"
+                                    class="quantity-value"
+                                  >
+                                    {{ getGiftItemQuantity(giftItem.gift_item_id) }}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    class="quantity-button"
+                                    :disabled="getGiftItemQuantity(giftItem.gift_item_id) >= giftItemMaxQuantity(giftItem)"
+                                    @click.stop="changeGiftItemQuantity(giftItem, 1)"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                         <p v-else class="empty-state">尚未建立任何活動</p>
                       </div>
@@ -503,6 +540,7 @@ export default {
       ticketQuantities: {},
       equipmentQuantities: {},
       productQuantities: {},
+      giftItemQuantities: {},
       equipmentOptions: [],
       productOptions: [],
       ticketOptions: [],
@@ -588,6 +626,18 @@ export default {
         .map((item) => ({ ...item, quantity: this.getItemQuantity(this.productQuantities, item.product_code) }))
     },
 
+    selectedGiftItems() {
+      return this.memberActivityCategories
+        .flatMap((category) => category.promotions)
+        .flatMap((activity) => (activity.gift_items ?? []).map((giftItem) => ({
+          ...giftItem,
+          campaign_label: activity.label,
+          gift_campaign_id: activity.activity_id,
+          quantity: this.getGiftItemQuantity(giftItem.gift_item_id),
+        })))
+        .filter((item) => item.quantity > 0)
+    },
+
     selectedSummaryChips() {
       const chips = []
 
@@ -599,6 +649,9 @@ export default {
       })
       this.selectedProductItems.forEach((item) => {
         chips.push({ key: `product-${item.product_code}`, label: `${item.product_name} x${item.quantity}`, type: 'product' })
+      })
+      this.selectedGiftItems.forEach((item) => {
+        chips.push({ key: `gift-${item.gift_item_id}`, label: `${item.gift_name} x${item.quantity}`, type: 'gift' })
       })
 
       return chips
@@ -635,7 +688,10 @@ export default {
     },
 
     allActivityOptions() {
-      return [this.defaultActivityOption, ...this.memberActivityCategories.flatMap((category) => category.promotions)]
+      return [
+        this.defaultActivityOption,
+        ...this.memberActivityCategories.flatMap((category) => category.promotions.filter((activity) => activity.selectable !== false)),
+      ]
     },
 
     defaultActivityOption() {
@@ -760,6 +816,37 @@ export default {
         return
       }
       this.expandedActivityCategoryIds = [...this.expandedActivityCategoryIds, categoryId]
+    },
+    selectMemberActivity(activity) {
+      if (!activity?.selectable) return
+      this.selectedActivityKey = activity.key
+    },
+    getGiftItemQuantity(giftItemId) {
+      return Number(this.giftItemQuantities?.[giftItemId] ?? 0)
+    },
+    giftItemMaxQuantity(giftItem) {
+      const remainingQty = Math.max(Number(giftItem?.remaining_qty ?? 0), 0)
+      const limitPerMember = giftItem?.limit_per_member == null ? remainingQty : Math.max(Number(giftItem.limit_per_member), 0)
+      return Math.max(Math.min(remainingQty, limitPerMember), 0)
+    },
+    setGiftItemQuantity(giftItem, quantity) {
+      const giftItemId = Number(giftItem?.gift_item_id ?? 0)
+      if (!giftItemId) return
+      const maxQuantity = this.giftItemMaxQuantity(giftItem)
+      const nextQuantity = Math.min(Math.max(Number(quantity ?? 0), 0), maxQuantity)
+      const nextMap = { ...this.giftItemQuantities }
+      if (nextQuantity <= 0) delete nextMap[giftItemId]
+      else nextMap[giftItemId] = nextQuantity
+      this.giftItemQuantities = nextMap
+    },
+    changeGiftItemQuantity(giftItem, delta) {
+      const currentQuantity = this.getGiftItemQuantity(giftItem.gift_item_id)
+      this.setGiftItemQuantity(giftItem, currentQuantity + delta)
+    },
+    toggleGiftItem(giftItem) {
+      if (this.giftItemMaxQuantity(giftItem) <= 0) return
+      const currentQuantity = this.getGiftItemQuantity(giftItem.gift_item_id)
+      this.setGiftItemQuantity(giftItem, currentQuantity > 0 ? 0 : 1)
     },
     setItemQuantity(type, code, quantity) {
       const mapKey = QUANTITY_MAP_KEYS[type]
@@ -994,12 +1081,18 @@ export default {
         ticket_items: this.selectedTicketItems.map((item) => ({ ticket_code: item.ticket_code, quantity: item.quantity })),
         rental_items: this.selectedEquipmentItems.map((item) => ({ rental_code: item.rental_code, quantity: item.quantity })),
         product_items: this.selectedProductItems.map((item) => ({ product_code: item.product_code, quantity: item.quantity })),
+        gift_items: this.selectedGiftItems.map((item) => ({
+          gift_item_id: item.gift_item_id,
+          gift_campaign_id: item.gift_campaign_id,
+          quantity: item.quantity,
+        })),
       }
     },
     resetSelection() {
       this.ticketQuantities = {}
       this.equipmentQuantities = {}
       this.productQuantities = {}
+      this.giftItemQuantities = {}
       this.paymentMethod = null
       this.selectedActivityKey = 'none'
       this.selectInvoiceType(0)
@@ -1430,6 +1523,10 @@ export default {
   background: var(--product);
 }
 
+.selection-chip.is-gift {
+  background: #e4f6dc;
+}
+
 .total-amount {
   display: block;
   margin-bottom: 18px;
@@ -1658,6 +1755,10 @@ export default {
   box-shadow: inset 0 0 0 1px rgba(47, 122, 83, 0.18);
 }
 
+.option-card.is-static {
+  cursor: default;
+}
+
 .option-card-title {
   font-size: 24px;
   font-weight: 700;
@@ -1687,6 +1788,50 @@ export default {
 
 .activity-section .option-card-subtitle {
   font-size: 14px;
+}
+
+.gift-item-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.gift-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(47, 122, 83, 0.06);
+  cursor: pointer;
+}
+
+.gift-item-card.selected {
+  background: rgba(47, 122, 83, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(47, 122, 83, 0.16);
+}
+
+.gift-item-card.disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.gift-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gift-item-text strong {
+  font-size: 14px;
+}
+
+.gift-item-text span {
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .invoice-input-row {
