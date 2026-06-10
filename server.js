@@ -1168,7 +1168,7 @@ app.get('/api/product_category', async (req, res) => {
   }
 });
 
-app.get('/api/member_activities', async (req, res) => {
+app.get('/api/member_activities_legacy_disabled', async (req, res) => {
   let conn;
   try {
     conn = await pool.getConnection();
@@ -1335,6 +1335,501 @@ app.get('/api/member_activities', async (req, res) => {
     if (conn) conn.release();
   }
 });
+
+const formatActivityDateTime = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('zh-TW', {
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const formatPercentDiscountText = (value) => {
+  const amount = Number(value ?? 0);
+  if (amount <= 0) return '折扣活動';
+  const discountNumber = amount * 100;
+  return Number.isInteger(discountNumber) && discountNumber % 10 === 0
+    ? `${discountNumber / 10} 折`
+    : `${discountNumber} 折`;
+};
+
+const formatDiscountText = (type, value) => {
+  const amount = Number(value ?? 0);
+  if (type === 'amount') return `折抵 ${amount.toLocaleString('zh-TW')} 元`;
+  if (type === 'percent') return formatPercentDiscountText(amount);
+  if (type === 'fixed') return `固定價格 ${amount.toLocaleString('zh-TW')} 元`;
+  return '折扣活動';
+};
+
+const formatActivityPeriodText = (startTime, endTime) => {
+  const startLabel = formatActivityDateTime(startTime);
+  const endLabel = formatActivityDateTime(endTime);
+  if (startLabel && endLabel) return `${startLabel} - ${endLabel}`;
+  if (startLabel) return `${startLabel} 起`;
+  if (endLabel) return `至 ${endLabel}`;
+  return '';
+};
+
+const formatGiftItemText = (item) => {
+  const details = [
+    `剩餘 ${Number(item.remaining_qty ?? 0).toLocaleString('zh-TW')} / ${Number(item.total_qty ?? 0).toLocaleString('zh-TW')}`,
+  ];
+  if (item.limit_per_member != null) details.push(`每會員上限 ${Number(item.limit_per_member)} 份`);
+  return `${item.gift_name} (${details.join(' | ')})`;
+};
+
+async function getActivityManagementRows(conn, { activeOnly = false } = {}) {
+  const categoryWhere = activeOnly ? 'WHERE is_active = 1' : '';
+  const promotionWhere = activeOnly ? 'WHERE p.is_active = 1' : '';
+  const giftWhere = activeOnly ? 'WHERE gc.is_active = 1' : '';
+
+  const categories = await conn.query(`
+    SELECT category_id, category_code, category_name, is_active
+    FROM activity_categories
+    ${categoryWhere}
+    ORDER BY category_id
+  `);
+
+  const promotions = await conn.query(`
+    SELECT
+      p.promotion_id,
+      p.category_id,
+      p.promotion_name,
+      p.start_time,
+      p.end_time,
+      p.is_active,
+      pr.rule_id,
+      pr.discount_type,
+      pr.discount_value
+    FROM promotions p
+    LEFT JOIN promotion_rules pr ON pr.promotion_id = p.promotion_id
+    ${promotionWhere}
+    ORDER BY p.category_id, p.promotion_id, pr.rule_id
+  `);
+
+  const giftCampaigns = await conn.query(`
+    SELECT
+      gc.gift_campaign_id,
+      gc.category_id,
+      gc.campaign_name,
+      gc.start_time,
+      gc.end_time,
+      gc.is_active,
+      gi.gift_item_id,
+      gi.gift_name,
+      gi.total_qty,
+      gi.remaining_qty,
+      gi.limit_per_member
+    FROM gift_campaigns gc
+    LEFT JOIN gift_items gi ON gi.gift_campaign_id = gc.gift_campaign_id
+    ${giftWhere}
+    ORDER BY gc.category_id, gc.gift_campaign_id, gi.gift_item_id
+  `);
+
+  const promotionsByCategoryId = promotions.reduce((map, promotion) => {
+    const categoryId = Number(promotion.category_id);
+    const promotionId = Number(promotion.promotion_id);
+    const list = map.get(categoryId) ?? [];
+
+    if (!list.some((item) => item.id === promotionId)) {
+      const discountText = formatDiscountText(promotion.discount_type, promotion.discount_value);
+      const periodText = formatActivityPeriodText(promotion.start_time, promotion.end_time);
+      list.push({
+        id: promotionId,
+        key: `promotion-${promotionId}`,
+        activity_id: promotionId,
+        category_id: categoryId,
+        title: promotion.promotion_name,
+        subtitle: periodText || '未設定活動期間',
+        summary: periodText ? `${discountText} | ${periodText}` : discountText,
+        description: periodText ? `${discountText} | ${periodText}` : discountText,
+        type: 'promotion',
+        discount_type: String(promotion.discount_type ?? 'none'),
+        discount_value: Number(promotion.discount_value ?? 0),
+        selectable: true,
+        is_active: Number(promotion.is_active ?? 0),
+        rule_id: promotion.rule_id == null ? null : Number(promotion.rule_id),
+        start_time: promotion.start_time,
+        end_time: promotion.end_time,
+      });
+    }
+
+    map.set(categoryId, list);
+    return map;
+  }, new Map());
+
+  const giftsByCategoryId = giftCampaigns.reduce((map, campaign) => {
+    const categoryId = Number(campaign.category_id);
+    const campaignId = Number(campaign.gift_campaign_id);
+    const list = map.get(categoryId) ?? [];
+    let entry = list.find((item) => item.id === campaignId);
+
+    if (!entry) {
+      entry = {
+        id: campaignId,
+        key: `gift-${campaignId}`,
+        activity_id: campaignId,
+        category_id: categoryId,
+        title: campaign.campaign_name,
+        subtitle: formatActivityPeriodText(campaign.start_time, campaign.end_time) || '未設定活動期間',
+        summary: '贈品活動',
+        description: formatActivityPeriodText(campaign.start_time, campaign.end_time),
+        type: 'gift',
+        selectable: false,
+        is_active: Number(campaign.is_active ?? 0),
+        start_time: campaign.start_time,
+        end_time: campaign.end_time,
+        gift_items: [],
+      };
+      list.push(entry);
+    }
+
+    if (campaign.gift_item_id != null) {
+      entry.gift_items.push({
+        gift_item_id: Number(campaign.gift_item_id),
+        gift_name: campaign.gift_name,
+        total_qty: Number(campaign.total_qty ?? 0),
+        remaining_qty: Number(campaign.remaining_qty ?? 0),
+        limit_per_member: campaign.limit_per_member == null ? null : Number(campaign.limit_per_member),
+        summary: formatGiftItemText(campaign),
+      });
+      entry.summary = `${entry.gift_items.length} 個贈品項目`;
+    }
+
+    map.set(categoryId, list);
+    return map;
+  }, new Map());
+
+  return categories.map((category) => ({
+    category_id: Number(category.category_id),
+    category_code: category.category_code,
+    category_name: category.category_name,
+    is_active: Number(category.is_active ?? 0),
+    promotions: promotionsByCategoryId.get(Number(category.category_id)) ?? [],
+    gift_campaigns: giftsByCategoryId.get(Number(category.category_id)) ?? [],
+  }));
+}
+
+app.get('/api/member_activities', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await getActivityManagementRows(conn, { activeOnly: true });
+    res.json(rows.map((category) => ({
+      category_id: category.category_id,
+      category_code: category.category_code,
+      category_name: category.category_name,
+      promotions: [
+        ...category.promotions.map((item) => ({
+          key: item.key,
+          activity_id: item.activity_id,
+          label: item.title,
+          description: item.description,
+          type: item.discount_type,
+          value: item.discount_value,
+          selectable: true,
+        })),
+        ...category.gift_campaigns.map((item) => ({
+          key: item.key,
+          activity_id: item.activity_id,
+          label: item.title,
+          description: item.description,
+          type: 'gift',
+          selectable: false,
+          gift_items: item.gift_items,
+        })),
+      ],
+    })));
+  } catch (err) {
+    console.error('member_activities DB error', err);
+    res.status(500).send('member_activities DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.get('/api/activity_management', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await getActivityManagementRows(conn, { activeOnly: false });
+    res.json(rows);
+  } catch (err) {
+    console.error('activity_management DB error', err);
+    res.status(500).json({ message: '取得活動管理資料失敗。' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/promotions', async (req, res) => {
+  let conn;
+  try {
+    const {
+      category_id,
+      promotion_name,
+      start_time = null,
+      end_time = null,
+      is_active = 1,
+      discount_type,
+      discount_value,
+    } = req.body ?? {};
+
+    if (!category_id || !promotion_name || !discount_type) {
+      return res.status(400).json({ message: '缺少必要的折扣活動欄位。' });
+    }
+
+    conn = await pool.getConnection();
+    const result = await conn.query(
+      `
+        INSERT INTO promotions (category_id, promotion_name, start_time, end_time, is_active)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      [Number(category_id), String(promotion_name).trim(), start_time || null, end_time || null, Number(is_active)]
+    );
+
+    await conn.query(
+      `
+        INSERT INTO promotion_rules (promotion_id, discount_type, discount_value)
+        VALUES (?, ?, ?)
+      `,
+      [Number(result.insertId), String(discount_type), Number(discount_value ?? 0)]
+    );
+
+    res.json({ success: true, promotion_id: Number(result.insertId) });
+  } catch (err) {
+    console.error('create promotion DB error', err);
+    res.status(500).json({ message: '建立折扣活動失敗。' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/promotions/:promotionId', async (req, res) => {
+  let conn;
+  try {
+    const promotionId = Number(req.params.promotionId);
+    const {
+      category_id,
+      promotion_name,
+      start_time = null,
+      end_time = null,
+      is_active = 1,
+      discount_type,
+      discount_value,
+    } = req.body ?? {};
+
+    if (!promotionId || !category_id || !promotion_name || !discount_type) {
+      return res.status(400).json({ message: '缺少必要的折扣活動欄位。' });
+    }
+
+    conn = await pool.getConnection();
+    await conn.query(
+      `
+        UPDATE promotions
+        SET category_id = ?, promotion_name = ?, start_time = ?, end_time = ?, is_active = ?
+        WHERE promotion_id = ?
+      `,
+      [Number(category_id), String(promotion_name).trim(), start_time || null, end_time || null, Number(is_active), promotionId]
+    );
+
+    const existingRule = await conn.query(
+      'SELECT rule_id FROM promotion_rules WHERE promotion_id = ? ORDER BY rule_id LIMIT 1',
+      [promotionId]
+    );
+
+    if (Array.isArray(existingRule) && existingRule.length) {
+      await conn.query(
+        `
+          UPDATE promotion_rules
+          SET discount_type = ?, discount_value = ?
+          WHERE promotion_id = ?
+        `,
+        [String(discount_type), Number(discount_value ?? 0), promotionId]
+      );
+    } else {
+      await conn.query(
+        `
+          INSERT INTO promotion_rules (promotion_id, discount_type, discount_value)
+          VALUES (?, ?, ?)
+        `,
+        [promotionId, String(discount_type), Number(discount_value ?? 0)]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('update promotion DB error', err);
+    res.status(500).json({ message: '更新折扣活動失敗。' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/promotions/:promotionId/status', async (req, res) => {
+  let conn;
+  try {
+    const promotionId = Number(req.params.promotionId);
+    const { is_active } = req.body ?? {};
+
+    if (!promotionId) {
+      return res.status(400).json({ message: '找不到折扣活動。' });
+    }
+
+    conn = await pool.getConnection();
+    await conn.query('UPDATE promotions SET is_active = ? WHERE promotion_id = ?', [
+      Number(is_active) === 0 ? 0 : 1,
+      promotionId,
+    ]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('toggle promotion status DB error', err);
+    res.status(500).json({ message: '更新折扣活動狀態失敗。' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/gift_campaigns', async (req, res) => {
+  let conn;
+  try {
+    const {
+      category_id,
+      campaign_name,
+      start_time = null,
+      end_time = null,
+      is_active = 1,
+      gift_items = [],
+    } = req.body ?? {};
+
+    if (!category_id || !campaign_name) {
+      return res.status(400).json({ message: '缺少必要的贈品活動欄位。' });
+    }
+
+    conn = await pool.getConnection();
+    const result = await conn.query(
+      `
+        INSERT INTO gift_campaigns (category_id, campaign_name, start_time, end_time, is_active)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      [Number(category_id), String(campaign_name).trim(), start_time || null, end_time || null, Number(is_active)]
+    );
+
+    for (const giftItem of Array.isArray(gift_items) ? gift_items : []) {
+      await conn.query(
+        `
+          INSERT INTO gift_items (gift_campaign_id, gift_name, total_qty, remaining_qty, limit_per_member)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        [
+          Number(result.insertId),
+          String(giftItem.gift_name ?? '').trim(),
+          Number(giftItem.total_qty ?? 0),
+          Number(giftItem.remaining_qty ?? 0),
+          giftItem.limit_per_member == null || giftItem.limit_per_member === ''
+            ? null
+            : Number(giftItem.limit_per_member),
+        ]
+      );
+    }
+
+    res.json({ success: true, gift_campaign_id: Number(result.insertId) });
+  } catch (err) {
+    console.error('create gift campaign DB error', err);
+    res.status(500).json({ message: '建立贈品活動失敗。' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/gift_campaigns/:campaignId', async (req, res) => {
+  let conn;
+  try {
+    const campaignId = Number(req.params.campaignId);
+    const {
+      category_id,
+      campaign_name,
+      start_time = null,
+      end_time = null,
+      is_active = 1,
+      gift_items = [],
+    } = req.body ?? {};
+
+    if (!campaignId || !category_id || !campaign_name) {
+      return res.status(400).json({ message: '缺少必要的贈品活動欄位。' });
+    }
+
+    conn = await pool.getConnection();
+    await conn.query(
+      `
+        UPDATE gift_campaigns
+        SET category_id = ?, campaign_name = ?, start_time = ?, end_time = ?, is_active = ?
+        WHERE gift_campaign_id = ?
+      `,
+      [Number(category_id), String(campaign_name).trim(), start_time || null, end_time || null, Number(is_active), campaignId]
+    );
+
+    await conn.query('DELETE FROM gift_items WHERE gift_campaign_id = ?', [campaignId]);
+
+    for (const giftItem of Array.isArray(gift_items) ? gift_items : []) {
+      await conn.query(
+        `
+          INSERT INTO gift_items (gift_campaign_id, gift_name, total_qty, remaining_qty, limit_per_member)
+          VALUES (?, ?, ?, ?, ?)
+        `,
+        [
+          campaignId,
+          String(giftItem.gift_name ?? '').trim(),
+          Number(giftItem.total_qty ?? 0),
+          Number(giftItem.remaining_qty ?? 0),
+          giftItem.limit_per_member == null || giftItem.limit_per_member === ''
+            ? null
+            : Number(giftItem.limit_per_member),
+        ]
+      );
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('update gift campaign DB error', err);
+    res.status(500).json({ message: '更新贈品活動失敗。' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/gift_campaigns/:campaignId/status', async (req, res) => {
+  let conn;
+  try {
+    const campaignId = Number(req.params.campaignId);
+    const { is_active } = req.body ?? {};
+
+    if (!campaignId) {
+      return res.status(400).json({ message: '找不到贈品活動。' });
+    }
+
+    conn = await pool.getConnection();
+    await conn.query('UPDATE gift_campaigns SET is_active = ? WHERE gift_campaign_id = ?', [
+      Number(is_active) === 0 ? 0 : 1,
+      campaignId,
+    ]);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('toggle gift campaign status DB error', err);
+    res.status(500).json({ message: '更新贈品活動狀態失敗。' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.post('/api/product', async (req, res) => {
   const {
     product_name,
