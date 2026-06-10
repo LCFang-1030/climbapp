@@ -114,16 +114,18 @@
 
         <div v-if="activeProfilePanel === 'confirm'" class="staff-profile-panel">
           <input
+            ref="currentPasswordInput"
             v-model.trim="currentPasswordConfirm"
             class="staff-profile-input"
             type="password"
+            @keyup.enter="handleConfirmCurrentPassword"
             placeholder="請輸入目前密碼"
           >
           <div class="staff-profile-actions">
             <button type="button" class="profile-menu-button profile-menu-button--ghost" @click="closePasswordDialog">
               取消
             </button>
-            <button type="button" class="profile-menu-button" @click="confirmCurrentPassword">
+            <button type="button" class="profile-menu-button" :disabled="isPasswordChecking" @click="handleConfirmCurrentPassword">
               下一步
             </button>
           </div>
@@ -131,19 +133,23 @@
 
         <div v-else class="staff-profile-panel">
           <input
+            ref="newPasswordInput"
             v-model.trim="passwordForm.newPassword"
             class="staff-profile-input"
             type="password"
+            @keyup.enter="focusConfirmPasswordInput"
             placeholder="請輸入新密碼"
           >
           <input
+            ref="confirmPasswordInput"
             v-model.trim="passwordForm.confirmPassword"
             class="staff-profile-input"
             type="password"
+            @keyup.enter="submitPasswordChange"
             placeholder="請再次輸入新密碼"
           >
           <div class="staff-profile-actions">
-            <button type="button" class="profile-menu-button profile-menu-button--ghost" @click="activeProfilePanel = 'confirm'">
+            <button type="button" class="profile-menu-button profile-menu-button--ghost" @click="goBackToPasswordConfirm">
               返回
             </button>
             <button
@@ -236,6 +242,7 @@ export default {
       profileErrorMsg: '',
       profileSuccessMsg: '',
       isPasswordSubmitting: false,
+      isPasswordChecking: false,
     }
   },
   mounted() {
@@ -250,6 +257,20 @@ export default {
   watch: {
     $route() {
       this.refreshAuthState()
+    },
+    activeProfilePanel(value) {
+      if (!value) {
+        return
+      }
+
+      this.$nextTick(() => {
+        if (value === 'confirm') {
+          this.focusCurrentPasswordInput()
+          return
+        }
+
+        this.focusNewPasswordInput()
+      })
     },
   },
   methods: {
@@ -309,6 +330,23 @@ export default {
       this.profileErrorMsg = ''
       this.profileSuccessMsg = ''
       this.isPasswordSubmitting = false
+      this.isPasswordChecking = false
+    },
+    focusCurrentPasswordInput() {
+      this.$refs.currentPasswordInput?.focus()
+    },
+    focusNewPasswordInput() {
+      this.$refs.newPasswordInput?.focus()
+    },
+    focusConfirmPasswordInput() {
+      this.$refs.confirmPasswordInput?.focus()
+    },
+    goBackToPasswordConfirm() {
+      this.passwordForm.newPassword = ''
+      this.passwordForm.confirmPassword = ''
+      this.profileErrorMsg = ''
+      this.profileSuccessMsg = ''
+      this.activeProfilePanel = 'confirm'
     },
     openChangePasswordConfirm() {
       this.closeProfileMenu()
@@ -317,6 +355,37 @@ export default {
     },
     closePasswordDialog() {
       this.resetPasswordDialog()
+    },
+    async handleConfirmCurrentPassword() {
+      if (!this.currentStaff?.eid) {
+        this.profileErrorMsg = '找不到目前登入的員工資料'
+        return
+      }
+
+      if (!this.currentPasswordConfirm) {
+        this.profileErrorMsg = '請先輸入目前密碼確認。'
+        return
+      }
+
+      this.profileErrorMsg = ''
+      this.profileSuccessMsg = ''
+      this.isPasswordChecking = true
+
+      try {
+        await axios.post(`/api/staff/${this.currentStaff.eid}/verify-password`, {
+          current_password: this.currentPasswordConfirm,
+        })
+
+        this.passwordForm.currentPassword = this.currentPasswordConfirm
+        this.passwordForm.newPassword = ''
+        this.passwordForm.confirmPassword = ''
+        this.currentPasswordConfirm = ''
+        this.activeProfilePanel = 'change-password'
+      } catch (error) {
+        this.profileErrorMsg = error.response?.data || '目前密碼驗證失敗'
+      } finally {
+        this.isPasswordChecking = false
+      }
     },
     confirmCurrentPassword() {
       if (!this.currentPasswordConfirm) {

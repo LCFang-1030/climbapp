@@ -1,9 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const mariadb = require('mariadb');
+const bcrypt = require('bcrypt');
 
 const app = express();
 const port = 3000;
+const BCRYPT_SALT_ROUNDS = 10;
 
 app.use(cors());
 app.use(express.json());
@@ -17,6 +19,310 @@ const pool = mariadb.createPool({
   password: 'climbapp',
   database: 'climbing_app',
   connectionLimit: 5,
+});
+
+function isBcryptHash(value) {
+  return /^\$2[aby]\$\d{2}\$/.test(String(value ?? ''));
+}
+
+async function verifyStaffPassword(storedPassword, inputPassword) {
+  const normalizedStoredPassword = String(storedPassword ?? '');
+  const normalizedInputPassword = String(inputPassword ?? '');
+
+  if (!isBcryptHash(normalizedStoredPassword)) {
+    return false;
+  }
+
+  return bcrypt.compare(normalizedInputPassword, normalizedStoredPassword);
+}
+
+async function isDefaultStaffPassword(staff, inputPassword) {
+  const defaultPassword = String(staff?.employee_id ?? '');
+  const normalizedInputPassword = String(inputPassword ?? '');
+
+  if (!defaultPassword || normalizedInputPassword !== defaultPassword) {
+    return false;
+  }
+
+  return verifyStaffPassword(staff?.password, normalizedInputPassword);
+}
+
+app.post('/api/staff/login', async (req, res) => {
+  const { employee_id: employeeId, password } = req.body;
+
+  if (!employeeId || !password) {
+    return res.status(400).send('請輸入員工編號與密碼');
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT eid, employee_id, alias, employee_title, password, is_active
+       FROM staff
+       WHERE employee_id = ?`,
+      [employeeId]
+    );
+
+    if (!rows.length) {
+      return res.status(401).send('員工編號或密碼錯誤');
+    }
+
+    const staff = rows[0];
+    const passwordMatched = await verifyStaffPassword(staff.password, password);
+
+    if (!passwordMatched) {
+      return res.status(401).send('員工編號或密碼錯誤');
+    }
+
+    if (Number(staff.is_active) !== 1) {
+      return res.status(403).send('此帳號尚未啟用');
+    }
+
+    res.json({
+      eid: staff.eid,
+      employee_id: staff.employee_id,
+      alias: staff.alias,
+      employee_title: staff.employee_title,
+      is_default_password: await isDefaultStaffPassword(staff, password),
+    });
+  } catch (err) {
+    console.error('staff login error', err);
+    res.status(500).send('staff login DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/staff/:eid/change-password', async (req, res) => {
+  const staffId = Number(req.params.eid);
+  const currentPassword = String(req.body.current_password ?? '');
+  const newPassword = String(req.body.new_password ?? '');
+
+  if (!staffId) {
+    return res.status(400).send('缺少員工編號');
+  }
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).send('請輸入目前密碼與新密碼');
+  }
+
+  if (currentPassword === newPassword) {
+    return res.status(400).send('新密碼不可與目前密碼相同');
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT eid, employee_id, password, is_active
+       FROM staff
+       WHERE eid = ?`,
+      [staffId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).send('找不到員工資料');
+    }
+
+    const staff = rows[0];
+
+    if (Number(staff.is_active) !== 1) {
+      return res.status(403).send('此帳號尚未啟用');
+    }
+
+    const passwordMatched = await verifyStaffPassword(staff.password, currentPassword);
+
+    if (!passwordMatched) {
+      return res.status(401).send('目前密碼輸入錯誤');
+    }
+
+    const hashedNewPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+
+    await conn.query(
+      `UPDATE staff
+       SET password = ?
+       WHERE eid = ?`,
+      [hashedNewPassword, staffId]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('change password error', err);
+    res.status(500).send('change password DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/staff/:eid/verify-password', async (req, res) => {
+  const staffId = Number(req.params.eid);
+  const currentPassword = String(req.body.current_password ?? '');
+
+  if (!staffId) {
+    return res.status(400).send('缺少員工編號');
+  }
+
+  if (!currentPassword) {
+    return res.status(400).send('請輸入目前密碼');
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT eid, password, is_active
+       FROM staff
+       WHERE eid = ?`,
+      [staffId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).send('找不到員工資料');
+    }
+
+    const staff = rows[0];
+
+    if (Number(staff.is_active) !== 1) {
+      return res.status(403).send('此帳號尚未啟用');
+    }
+
+    const passwordMatched = await verifyStaffPassword(staff.password, currentPassword);
+
+    if (!passwordMatched) {
+      return res.status(401).send('目前密碼輸入錯誤');
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('verify password error', err);
+    res.status(500).send('verify password DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/api/staff', async (req, res) => {
+  const staffFields = [
+    'name',
+    'alias',
+    'nationality',
+    'idcard',
+    'gender',
+    'birthday',
+    'phone',
+    'household_address',
+    'contact_address',
+    'email',
+    'emergency_name',
+    'emergency_phone',
+    'emergency_telphone',
+    'emergency_address',
+    'emergency_relation',
+    'employee_status',
+    'employee_title',
+    'is_active',
+    'note',
+  ];
+  const requiredFields = staffFields.filter((field) => field !== 'note');
+
+  for (const field of requiredFields) {
+    const value = req.body[field];
+    if (value === null || value === undefined || value.toString().trim() === '') {
+      return res.status(400).send(`缺少必要欄位: ${field}`);
+    }
+  }
+
+  const {
+    name,
+    alias,
+    nationality,
+    idcard,
+    gender,
+    birthday,
+    phone,
+    household_address,
+    contact_address,
+    email,
+    emergency_name,
+    emergency_phone,
+    emergency_telphone,
+    emergency_address,
+    emergency_relation,
+    employee_status,
+    employee_title,
+    is_active,
+    note,
+  } = req.body;
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const exist = await conn.query(
+      'SELECT eid FROM staff WHERE idcard = ?',
+      [idcard]
+    );
+
+    if (exist.length > 0) {
+      return res.status(400).send('身分證字號已經註冊過');
+    }
+
+    const nextIdRows = await conn.query(
+      `SELECT AUTO_INCREMENT
+       FROM information_schema.TABLES
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'staff'`
+    );
+    const nextEid = Number(nextIdRows[0]?.AUTO_INCREMENT);
+    const employeeId = `${employee_title}${gender}${String(nextEid).padStart(4, '0')}`;
+    const hashedDefaultPassword = await bcrypt.hash(employeeId, BCRYPT_SALT_ROUNDS);
+
+    const result = await conn.query(
+      `INSERT INTO staff (
+        name, alias, nationality, idcard, gender, birthday, phone,
+        household_address, contact_address, email,
+        emergency_name, emergency_phone, emergency_telphone, emergency_address,
+        emergency_relation, employee_id, employee_status, employee_title, is_active,
+        password, note
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        alias,
+        nationality,
+        idcard,
+        gender,
+        birthday,
+        phone,
+        household_address,
+        contact_address,
+        email,
+        emergency_name,
+        emergency_phone,
+        emergency_telphone,
+        emergency_address,
+        emergency_relation,
+        employeeId,
+        employee_status,
+        employee_title,
+        is_active,
+        hashedDefaultPassword,
+        note,
+      ]
+    );
+
+    const eid = Number(result.insertId);
+
+    res.json({
+      success: true,
+      eid,
+      employee_id: employeeId,
+    });
+  } catch (err) {
+    console.error('staff create error', err);
+    res.status(500).send('STAFF DB error');
+  } finally {
+    if (conn) conn.release();
+  }
 });
 
 app.get('/api/staff', async (req, res) => {

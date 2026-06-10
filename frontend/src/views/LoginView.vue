@@ -23,6 +23,7 @@
             v-model="employeeId"
             :disabled="isSubmitting"
             :class="{ 'placeholder-selected': !employeeId }"
+            @change="focusPasswordInput"
           >
             <option value="">請選擇員工帳號</option>
             <option
@@ -38,6 +39,7 @@
         <label class="form-row">
           <span>密碼</span>
           <input
+            ref="passwordInputRef"
             v-model.trim="password"
             :disabled="isSubmitting"
             type="password"
@@ -162,6 +164,16 @@ export default {
     })
   },
   methods: {
+    focusPasswordInput() {
+      this.$nextTick(() => {
+        if (!this.employeeId) {
+          this.$refs.employeeSelectRef?.blur()
+          return
+        }
+
+        this.$refs.passwordInputRef?.focus()
+      })
+    },
     async fetchStaff() {
       try {
         const res = await axios.get('/api/staff')
@@ -187,6 +199,10 @@ export default {
         })
 
         setStoredAuth(normalizeAuthPayload(res.data))
+
+        if (res.data?.is_default_password) {
+          alert('目前仍使用預設密碼，登入後請盡快到左下角的登入帳號修改密碼。')
+        }
 
         const redirectTarget = this.$route.query.redirect || '/'
         this.$router.push(redirectTarget)
