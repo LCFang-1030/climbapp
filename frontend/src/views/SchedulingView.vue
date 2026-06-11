@@ -1,11 +1,11 @@
 <template>
   <section class="scheduling-view">
     <header class="calendar-hero">
-      <div>
+      <div class="hero-copy">
         <p class="calendar-eyebrow">Staff Scheduling</p>
         <h1>排班行事曆</h1>
         <p class="calendar-subtitle">
-          以月曆檢視員工班表，可直接新增班表並查看每筆排班詳細資訊。
+          以月曆檢視員工班表，可直接新增班表、修改班表並查看每筆排班詳細資訊。
         </p>
       </div>
 
@@ -15,6 +15,11 @@
           <button type="button" class="calendar-today-button" @click="goToCurrentMonth">今天</button>
           <button type="button" class="calendar-nav-button" @click="goToNextMonth">下個月</button>
         </div>
+
+        <section class="current-time-card" aria-label="目前時間">
+          <p class="current-time-label">目前時間</p>
+          <p class="current-time-value">{{ currentTimeText }}</p>
+        </section>
       </div>
     </header>
 
@@ -27,7 +32,7 @@
         <p class="calendar-range">{{ visibleRangeLabel }}</p>
       </div>
 
-      <div class="calendar-toolbar calendar-toolbar--inside">
+      <div class="calendar-toolbar">
         <div class="staff-legend" aria-label="員工顯示控制">
           <button
             v-for="staff in staffList"
@@ -41,7 +46,10 @@
           </button>
         </div>
 
-        <button type="button" class="calendar-add-button" @click="openCreateDialog()">新增班表</button>
+        <div class="toolbar-actions">
+          <button type="button" class="secondary-button" @click="openEditPickerDialog">修改班表</button>
+          <button type="button" class="calendar-add-button" @click="openCreateDialog()">新增班表</button>
+        </div>
       </div>
 
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
@@ -104,14 +112,14 @@
       </template>
     </section>
 
-    <div v-if="isCreateDialogOpen" class="dialog-overlay" @click.self="closeCreateDialog">
-      <section class="dialog-card" aria-label="新增班表">
+    <div v-if="isScheduleDialogOpen" class="dialog-overlay" @click.self="closeScheduleDialog">
+      <section class="dialog-card" :aria-label="isEditingSchedule ? '修改班表' : '新增班表'">
         <div class="dialog-header">
           <div>
-            <p class="dialog-kicker">Create Schedule</p>
-            <h3>新增班表</h3>
+            <p class="dialog-kicker">{{ isEditingSchedule ? 'Edit Schedule' : 'Create Schedule' }}</p>
+            <h3>{{ isEditingSchedule ? '修改班表' : '新增班表' }}</h3>
           </div>
-          <button type="button" class="dialog-close-button" @click="closeCreateDialog">X</button>
+          <button type="button" class="dialog-close-button" @click="closeScheduleDialog">X</button>
         </div>
 
         <form class="schedule-form" @submit.prevent="submitSchedule">
@@ -141,13 +149,13 @@
                   <div v-if="openTimeDropdown === 'start_hour'" class="time-dropdown-menu">
                     <button
                       v-for="hour in hourOptions"
-                      :key="`start-hour-${hour.value}`"
+                      :key="`start-hour-${hour}`"
                       type="button"
                       class="time-dropdown-option"
-                      :class="{ 'time-dropdown-option--active': scheduleForm.start_hour === hour.value }"
-                      @click="selectTimeValue('start_hour', hour.value)"
+                      :class="{ 'time-dropdown-option--active': scheduleForm.start_hour === hour }"
+                      @click="selectTimeValue('start_hour', hour)"
                     >
-                      {{ hour.label }}
+                      {{ hour }}
                     </button>
                   </div>
                 </div>
@@ -182,13 +190,13 @@
                   <div v-if="openTimeDropdown === 'end_hour'" class="time-dropdown-menu">
                     <button
                       v-for="hour in hourOptions"
-                      :key="`end-hour-${hour.value}`"
+                      :key="`end-hour-${hour}`"
                       type="button"
                       class="time-dropdown-option"
-                      :class="{ 'time-dropdown-option--active': scheduleForm.end_hour === hour.value }"
-                      @click="selectTimeValue('end_hour', hour.value)"
+                      :class="{ 'time-dropdown-option--active': scheduleForm.end_hour === hour }"
+                      @click="selectTimeValue('end_hour', hour)"
                     >
-                      {{ hour.label }}
+                      {{ hour }}
                     </button>
                   </div>
                 </div>
@@ -230,9 +238,61 @@
           <p v-if="formErrorMessage" class="error-message">{{ formErrorMessage }}</p>
 
           <div class="dialog-actions">
-            <button type="button" class="secondary-button" @click="closeCreateDialog">取消</button>
+            <button type="button" class="secondary-button" @click="closeScheduleDialog">取消</button>
             <button type="submit" class="primary-button" :disabled="isSaving">
-              {{ isSaving ? '儲存中...' : '儲存班表' }}
+              {{ isSaving ? '儲存中...' : (isEditingSchedule ? '修改班表' : '儲存班表') }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <div v-if="isEditPickerDialogOpen" class="dialog-overlay" @click.self="closeEditPickerDialog">
+      <section class="dialog-card dialog-card--compact" aria-label="選擇要修改的班表">
+        <div class="dialog-header">
+          <div>
+            <p class="dialog-kicker">Edit Schedule</p>
+            <h3>修改班表</h3>
+          </div>
+          <button type="button" class="dialog-close-button" @click="closeEditPickerDialog">X</button>
+        </div>
+
+        <form class="schedule-form schedule-form--compact" @submit.prevent="submitEditPicker">
+          <label class="form-field">
+            <span>員工</span>
+            <select v-model="editPickerForm.staff_id" required @change="handleEditPickerStaffChange">
+              <option value="">請選擇員工</option>
+              <option v-for="staff in staffList" :key="staff.eid" :value="String(staff.eid)">
+                {{ staff.alias || staff.name }} ({{ staff.employee_id }})
+              </option>
+            </select>
+          </label>
+
+          <label class="form-field">
+            <span>班表</span>
+            <select v-model="editPickerForm.schedule_id" :disabled="!editPickerForm.staff_id || isLoadingEditOptions" required>
+              <option value="">{{ editScheduleSelectPlaceholder }}</option>
+              <option
+                v-for="schedule in editScheduleOptions"
+                :key="schedule.schedule_id"
+                :value="String(schedule.schedule_id)"
+              >
+                {{ formatEditScheduleOption(schedule) }}
+              </option>
+            </select>
+          </label>
+
+          <p v-if="editPickerErrorMessage" class="error-message">{{ editPickerErrorMessage }}</p>
+          <p v-else-if="isLoadingEditOptions" class="info-message">載入班表選項中...</p>
+
+          <div class="dialog-actions">
+            <button type="button" class="secondary-button" @click="closeEditPickerDialog">取消</button>
+            <button
+              type="submit"
+              class="primary-button"
+              :disabled="!editPickerForm.schedule_id || isLoadingEditOptions || isLoadingEditSchedule"
+            >
+              {{ isLoadingEditSchedule ? '載入中...' : '開始修改' }}
             </button>
           </div>
         </form>
@@ -246,7 +306,17 @@
             <p class="dialog-kicker">Schedule Detail</p>
             <h3>班表詳細資訊</h3>
           </div>
-          <button type="button" class="dialog-close-button" @click="closeDetailDialog">X</button>
+          <div class="detail-dialog-actions">
+            <button
+              v-if="selectedSchedule"
+              type="button"
+              class="secondary-button"
+              @click="openEditDialogFromDetail"
+            >
+              修改
+            </button>
+            <button type="button" class="dialog-close-button" @click="closeDetailDialog">X</button>
+          </div>
         </div>
 
         <p v-if="isLoadingDetail" class="info-message">讀取詳細資訊中...</p>
@@ -299,12 +369,15 @@ export default {
     return {
       weekdays: WEEKDAYS,
       currentDate: this.startOfMonth(new Date()),
+      currentTimeText: '',
+      currentTimeTimerId: null,
       staffList: [],
       schedules: [],
       visibleStaffIds: [],
       isLoading: false,
       errorMessage: '',
-      isCreateDialogOpen: false,
+      isScheduleDialogOpen: false,
+      editingScheduleId: null,
       openTimeDropdown: '',
       isSaving: false,
       formErrorMessage: '',
@@ -312,6 +385,15 @@ export default {
       isLoadingDetail: false,
       detailErrorMessage: '',
       selectedSchedule: null,
+      isEditPickerDialogOpen: false,
+      isLoadingEditOptions: false,
+      isLoadingEditSchedule: false,
+      editPickerErrorMessage: '',
+      editPickerForm: {
+        staff_id: '',
+        schedule_id: '',
+      },
+      editScheduleOptions: [],
       scheduleForm: this.createEmptyForm(),
     }
   },
@@ -325,13 +407,13 @@ export default {
       return `${year}-${month}`
     },
     hourOptions() {
-      return Array.from({ length: 24 }, (_, hour) => ({
-        value: String(hour).padStart(2, '0'),
-        label: String(hour).padStart(2, '0'),
-      }))
+      return Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, '0'))
     },
     minuteOptions() {
       return Array.from({ length: 60 }, (_, minute) => String(minute).padStart(2, '0'))
+    },
+    isEditingSchedule() {
+      return Boolean(this.editingScheduleId)
     },
     calendarDays() {
       const firstDay = this.startOfMonth(this.currentDate)
@@ -358,19 +440,34 @@ export default {
         : ''
     },
     schedulesByDate() {
-      return this.schedules.reduce((grouped, item) => {
-        if (!this.isStaffVisible(item.staff_id)) {
+      return this.schedules.reduce((grouped, schedule) => {
+        if (!this.isStaffVisible(schedule.staff_id)) {
           return grouped
         }
 
-        const key = this.normalizeDateKey(item.work_date)
+        const key = this.normalizeDateKey(schedule.work_date)
         if (!grouped[key]) {
           grouped[key] = []
         }
 
-        grouped[key].push(item)
+        grouped[key].push(schedule)
         return grouped
       }, {})
+    },
+    editScheduleSelectPlaceholder() {
+      if (!this.editPickerForm.staff_id) {
+        return '請先選擇員工'
+      }
+
+      if (this.isLoadingEditOptions) {
+        return '載入中...'
+      }
+
+      if (!this.editScheduleOptions.length) {
+        return '此員工今天之後沒有班表'
+      }
+
+      return '請選擇班表'
     },
   },
   watch: {
@@ -380,10 +477,12 @@ export default {
   },
   mounted() {
     this.initializePage()
+    this.startCurrentTimeClock()
     document.addEventListener('click', this.handleDocumentClick)
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleDocumentClick)
+    this.stopCurrentTimeClock()
   },
   methods: {
     createEmptyForm(date = '') {
@@ -397,6 +496,26 @@ export default {
         is_active: '1',
         note: '',
       }
+    },
+    startCurrentTimeClock() {
+      this.updateCurrentTimeText()
+      this.currentTimeTimerId = window.setInterval(this.updateCurrentTimeText, 1000)
+    },
+    stopCurrentTimeClock() {
+      if (this.currentTimeTimerId) {
+        window.clearInterval(this.currentTimeTimerId)
+        this.currentTimeTimerId = null
+      }
+    },
+    updateCurrentTimeText() {
+      const now = new Date()
+      const year = now.getFullYear()
+      const month = now.getMonth() + 1
+      const day = now.getDate()
+      const hours = String(now.getHours()).padStart(2, '0')
+      const minutes = String(now.getMinutes()).padStart(2, '0')
+      const seconds = String(now.getSeconds()).padStart(2, '0')
+      this.currentTimeText = `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`
     },
     handleDocumentClick(event) {
       if (!event.target.closest('.time-dropdown')) {
@@ -482,15 +601,109 @@ export default {
       this.currentDate = this.startOfMonth(new Date())
     },
     openCreateDialog(date = null) {
+      this.editingScheduleId = null
       this.formErrorMessage = ''
       this.openTimeDropdown = ''
       this.scheduleForm = this.createEmptyForm(date ? this.formatDateKey(date) : '')
       this.applyTimeParts('start', '09:00')
       this.applyTimeParts('end', '18:00')
-      this.isCreateDialogOpen = true
+      this.isScheduleDialogOpen = true
     },
-    closeCreateDialog() {
-      this.isCreateDialogOpen = false
+    openEditPickerDialog() {
+      this.editPickerForm = {
+        staff_id: '',
+        schedule_id: '',
+      }
+      this.editScheduleOptions = []
+      this.editPickerErrorMessage = ''
+      this.isLoadingEditOptions = false
+      this.isLoadingEditSchedule = false
+      this.isEditPickerDialogOpen = true
+    },
+    closeEditPickerDialog() {
+      this.isEditPickerDialogOpen = false
+      this.editPickerForm = {
+        staff_id: '',
+        schedule_id: '',
+      }
+      this.editScheduleOptions = []
+      this.editPickerErrorMessage = ''
+      this.isLoadingEditOptions = false
+      this.isLoadingEditSchedule = false
+    },
+    async handleEditPickerStaffChange() {
+      this.editPickerForm.schedule_id = ''
+      this.editScheduleOptions = []
+      this.editPickerErrorMessage = ''
+
+      if (!this.editPickerForm.staff_id) {
+        return
+      }
+
+      this.isLoadingEditOptions = true
+
+      try {
+        const response = await axios.get('/api/staff_schedule_options', {
+          params: {
+            staff_id: Number(this.editPickerForm.staff_id),
+            from_date: this.formatDateKey(new Date()),
+          },
+        })
+        this.editScheduleOptions = Array.isArray(response.data) ? response.data : []
+      } catch (error) {
+        console.error('fetch edit schedule options error', error)
+        this.editScheduleOptions = []
+        this.editPickerErrorMessage = error.response?.data?.message || error.response?.data || '載入班表選項失敗。'
+      } finally {
+        this.isLoadingEditOptions = false
+      }
+    },
+    async submitEditPicker() {
+      if (!this.editPickerForm.schedule_id) {
+        this.editPickerErrorMessage = '請先選擇班表。'
+        return
+      }
+
+      this.isLoadingEditSchedule = true
+      this.editPickerErrorMessage = ''
+
+      try {
+        const response = await axios.get(`/api/staff_schedule/${this.editPickerForm.schedule_id}`)
+        const schedule = response.data
+        this.closeEditPickerDialog()
+        this.openEditDialog(schedule)
+      } catch (error) {
+        console.error('fetch edit schedule detail error', error)
+        this.editPickerErrorMessage = error.response?.data?.message || error.response?.data || '載入班表詳細資料失敗。'
+      } finally {
+        this.isLoadingEditSchedule = false
+      }
+    },
+    openEditDialogFromDetail() {
+      if (!this.selectedSchedule) {
+        return
+      }
+
+      const schedule = { ...this.selectedSchedule }
+      this.closeDetailDialog()
+      this.openEditDialog(schedule)
+    },
+    openEditDialog(schedule) {
+      this.editingScheduleId = Number(schedule.schedule_id)
+      this.formErrorMessage = ''
+      this.openTimeDropdown = ''
+      this.scheduleForm = this.createEmptyForm()
+      this.scheduleForm.staff_id = String(schedule.staff_id)
+      this.scheduleForm.work_date = this.normalizeDateKey(schedule.work_date)
+      this.scheduleForm.is_active = String(Number(schedule.is_active) === 0 ? 0 : 1)
+      this.scheduleForm.note = schedule.note || ''
+      this.applyTimeParts('start', schedule.start_time)
+      this.applyTimeParts('end', schedule.end_time)
+      this.isScheduleDialogOpen = true
+    },
+    closeScheduleDialog() {
+      this.isScheduleDialogOpen = false
+      this.editingScheduleId = null
       this.openTimeDropdown = ''
       this.formErrorMessage = ''
       this.scheduleForm = this.createEmptyForm()
@@ -515,8 +728,7 @@ export default {
       try {
         const auth = getStoredAuth()
         const targetWorkDate = this.scheduleForm.work_date
-
-        await axios.post('/api/staff_schedule', {
+        const payload = {
           staff_id: Number(this.scheduleForm.staff_id),
           work_date: targetWorkDate,
           start_time: startTime,
@@ -524,9 +736,15 @@ export default {
           is_active: Number(this.scheduleForm.is_active),
           note: this.scheduleForm.note || null,
           created_by: auth?.eid ?? null,
-        })
+        }
 
-        this.closeCreateDialog()
+        if (this.isEditingSchedule) {
+          await axios.put(`/api/staff_schedule/${this.editingScheduleId}`, payload)
+        } else {
+          await axios.post('/api/staff_schedule', payload)
+        }
+
+        this.closeScheduleDialog()
 
         const [year, month] = targetWorkDate.split('-')
         const targetMonth = `${year}-${month}`
@@ -537,8 +755,8 @@ export default {
           await this.fetchSchedules()
         }
       } catch (error) {
-        console.error('create schedule error', error)
-        this.formErrorMessage = error.response?.data?.message || error.response?.data || '新增班表失敗。'
+        console.error('save schedule error', error)
+        this.formErrorMessage = error.response?.data?.message || error.response?.data || '儲存班表失敗。'
       } finally {
         this.isSaving = false
       }
@@ -554,7 +772,7 @@ export default {
         this.selectedSchedule = response.data
       } catch (error) {
         console.error('schedule detail error', error)
-        this.detailErrorMessage = error.response?.data || '讀取班表詳細資訊失敗。'
+        this.detailErrorMessage = error.response?.data?.message || error.response?.data || '載入班表詳細資訊失敗。'
       } finally {
         this.isLoadingDetail = false
       }
@@ -566,13 +784,12 @@ export default {
       this.selectedSchedule = null
     },
     buildTimeValue(prefix) {
-      const hour = Number(this.scheduleForm[`${prefix}_hour`])
-      return `${String(hour).padStart(2, '0')}:${this.scheduleForm[`${prefix}_minute`]}`
+      return `${this.scheduleForm[`${prefix}_hour`]}:${this.scheduleForm[`${prefix}_minute`]}`
     },
     applyTimeParts(prefix, timeValue) {
       const [hourText = '00', minuteText = '00'] = String(timeValue).split(':')
       this.scheduleForm[`${prefix}_hour`] = String(Number(hourText)).padStart(2, '0')
-      this.scheduleForm[`${prefix}_minute`] = minuteText
+      this.scheduleForm[`${prefix}_minute`] = String(Number(minuteText)).padStart(2, '0')
     },
     isSameDate(left, right) {
       return left.getFullYear() === right.getFullYear()
@@ -595,18 +812,17 @@ export default {
       }
 
       const rawValue = String(value).trim()
-
       if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
         return rawValue
       }
 
-      const parsedDate = new Date(rawValue)
-      if (!Number.isNaN(parsedDate.getTime())) {
-        return this.formatDateKey(parsedDate)
+      const matchedDate = rawValue.match(/\d{4}-\d{2}-\d{2}/)
+      if (matchedDate) {
+        return matchedDate[0]
       }
 
-      const matchedDate = rawValue.match(/\d{4}-\d{2}-\d{2}/)
-      return matchedDate ? matchedDate[0] : rawValue.slice(0, 10)
+      const parsedDate = new Date(rawValue)
+      return Number.isNaN(parsedDate.getTime()) ? '' : this.formatDateKey(parsedDate)
     },
     formatShortDate(date) {
       return `${date.getMonth() + 1}/${date.getDate()}`
@@ -636,6 +852,10 @@ export default {
       const hours = String(date.getHours()).padStart(2, '0')
       const minutes = String(date.getMinutes()).padStart(2, '0')
       return `${year}-${month}-${day} ${hours}:${minutes}`
+    },
+    formatEditScheduleOption(schedule) {
+      const statusText = Number(schedule.is_active) === 1 ? '啟用' : '停用'
+      return `${this.formatDateDisplay(schedule.work_date)} ${schedule.start_time} - ${schedule.end_time} (${statusText})`
     },
     activeStatusText(value) {
       return Number(value) === 1 ? '啟用' : '停用'
@@ -668,7 +888,7 @@ export default {
 .scheduling-view {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 12px;
 }
 
 .calendar-hero,
@@ -684,10 +904,14 @@ export default {
   display: flex;
   justify-content: space-between;
   gap: 28px;
-  padding: 28px 32px;
+  padding: 24px 28px;
   background:
     radial-gradient(circle at top right, rgba(77, 182, 255, 0.18), transparent 28%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(244, 249, 255, 0.92));
+}
+
+.hero-copy {
+  min-width: 0;
 }
 
 .calendar-eyebrow,
@@ -715,25 +939,54 @@ export default {
 
 .calendar-subtitle {
   margin: 12px 0 0;
-  max-width: 520px;
+  max-width: 560px;
   color: #4f6479;
   line-height: 1.6;
 }
 
 .calendar-actions {
   display: flex;
+  flex-direction: column;
   align-items: flex-end;
-  justify-content: flex-start;
-  min-width: min(520px, 100%);
+  gap: 10px;
+  min-width: min(360px, 100%);
 }
 
 .calendar-controls,
-.calendar-toolbar {
+.calendar-toolbar,
+.toolbar-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
   gap: 12px;
-  width: 100%;
+}
+
+.calendar-controls {
+  justify-content: flex-end;
+}
+
+.current-time-card {
+  min-width: 220px;
+  padding: 14px 18px;
+  border: 1px solid rgba(32, 52, 74, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 42px rgba(31, 65, 102, 0.12);
+}
+
+.current-time-label {
+  display: block;
+  margin: 0 0 8px;
+  color: #6f8194;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.current-time-value {
+  margin: 0;
+  color: #20344a;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .calendar-nav-button,
@@ -771,6 +1024,31 @@ export default {
 .primary-button:hover,
 .secondary-button:hover {
   transform: translateY(-1px);
+}
+
+.calendar-shell {
+  padding: 18px 20px 20px;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 6px;
+  padding: 8px 8px 8px;
+}
+
+.calendar-range {
+  font-size: 13px;
+}
+
+.calendar-toolbar {
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 4px;
+  padding: 0 8px 0;
 }
 
 .staff-legend {
@@ -814,27 +1092,8 @@ export default {
   font-weight: 600;
 }
 
-.calendar-shell {
-  padding: 20px;
-}
-
-.calendar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
-  padding: 8px 8px 8px;
-}
-
-.calendar-range {
-  font-size: 13px;
-}
-
-.calendar-toolbar--inside {
-  align-items: center;
-  margin-bottom: 18px;
-  padding: 0 8px 10px;
+.toolbar-actions {
+  justify-content: flex-end;
 }
 
 .calendar-weekdays,
@@ -844,7 +1103,7 @@ export default {
 }
 
 .calendar-weekdays {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .calendar-weekday {
@@ -968,6 +1227,10 @@ export default {
   padding: 22px;
 }
 
+.dialog-card--compact {
+  width: min(520px, 100%);
+}
+
 .detail-dialog-card {
   width: min(520px, 100%);
 }
@@ -978,6 +1241,12 @@ export default {
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 18px;
+}
+
+.detail-dialog-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .dialog-close-button {
@@ -996,6 +1265,12 @@ export default {
   max-height: calc(100vh - 180px);
   overflow-y: auto;
   padding-right: 4px;
+}
+
+.schedule-form--compact {
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
 .form-row {
@@ -1056,7 +1331,7 @@ export default {
   left: 0;
   right: 0;
   z-index: 5;
-  max-height: 280px;
+  max-height: 288px;
   overflow-y: auto;
   border: 1px solid #d6dde7;
   border-radius: 14px;
@@ -1085,7 +1360,7 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  padding-bottom: 6px;
+  padding-bottom: 18px;
 }
 
 .detail-list {
@@ -1133,30 +1408,33 @@ export default {
   border: 1px solid #cae3fb;
 }
 
-.primary-button:disabled {
+.primary-button:disabled,
+.secondary-button:disabled {
   opacity: 0.7;
   cursor: wait;
 }
 
 @media (max-width: 1100px) {
   .calendar-hero,
-  .calendar-header {
+  .calendar-header,
+  .calendar-toolbar {
     flex-direction: column;
     align-items: flex-start;
   }
 
   .calendar-actions {
     width: 100%;
-    align-items: flex-end;
     min-width: 100%;
+    align-items: stretch;
   }
 
   .calendar-controls,
-  .calendar-toolbar {
+  .toolbar-actions {
     justify-content: flex-start;
   }
 
-  .calendar-toolbar--inside {
+  .current-time-card {
+    min-width: 0;
     width: 100%;
   }
 }
@@ -1185,6 +1463,10 @@ export default {
     font-size: 28px;
   }
 
+  .current-time-value {
+    font-size: 16px;
+  }
+
   .form-row,
   .time-select-group {
     grid-template-columns: 1fr;
@@ -1196,6 +1478,11 @@ export default {
 
   .detail-list {
     grid-template-columns: 1fr;
+  }
+
+  .detail-dialog-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 </style>

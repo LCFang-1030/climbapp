@@ -590,6 +590,45 @@ app.get('/api/staff_schedule/:scheduleId', async (req, res) => {
   }
 });
 
+app.get('/api/staff_schedule_options', async (req, res) => {
+  const staffId = Number(req.query.staff_id);
+  const fromDate = String(req.query.from_date ?? '').trim();
+
+  if (!staffId) {
+    return res.status(400).json({ success: false, message: 'staff_id is required' });
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fromDate)) {
+    return res.status(400).json({ success: false, message: 'from_date must be YYYY-MM-DD' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      `SELECT
+        ss.schedule_id,
+        ss.staff_id,
+        DATE_FORMAT(ss.work_date, '%Y-%m-%d') AS work_date,
+        TIME_FORMAT(ss.start_time, '%H:%i') AS start_time,
+        TIME_FORMAT(ss.end_time, '%H:%i') AS end_time,
+        ss.is_active
+      FROM staff_schedule ss
+      WHERE ss.staff_id = ?
+        AND ss.work_date >= STR_TO_DATE(?, '%Y-%m-%d')
+      ORDER BY ss.work_date, ss.start_time, ss.schedule_id`,
+      [staffId, fromDate]
+    );
+
+    res.json(rows);
+  } catch (err) {
+    console.error('staff_schedule_options fetch error', err);
+    res.status(500).send('staff_schedule DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
 app.get('/api/bulletin_board', async (req, res) => {
   const includeInactive = String(req.query.includeInactive ?? '') === '1';
 
@@ -810,6 +849,19 @@ app.post('/api/staff_schedule', async (req, res) => {
       }
     }
 
+    const duplicateRows = await conn.query(
+      `SELECT schedule_id
+       FROM staff_schedule
+       WHERE staff_id = ?
+         AND work_date = STR_TO_DATE(?, '%Y-%m-%d')
+       LIMIT 1`,
+      [staffId, workDate]
+    );
+
+    if (duplicateRows.length) {
+      return res.status(400).json({ success: false, message: '同日期同一位員工只能有一筆班表' });
+    }
+
     const result = await conn.query(
       `INSERT INTO staff_schedule (
         staff_id,
@@ -830,6 +882,98 @@ app.post('/api/staff_schedule', async (req, res) => {
     });
   } catch (err) {
     console.error('staff_schedule create error', err);
+    res.status(500).send('staff_schedule DB error');
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.put('/api/staff_schedule/:scheduleId', async (req, res) => {
+  const scheduleId = Number(req.params.scheduleId);
+  const staffId = Number(req.body.staff_id);
+  const workDate = String(req.body.work_date ?? '').trim();
+  const startTime = String(req.body.start_time ?? '').trim();
+  const endTime = String(req.body.end_time ?? '').trim();
+  const isActive = Number(req.body.is_active) === 0 ? 0 : 1;
+  const note = req.body.note === null || req.body.note === undefined
+    ? null
+    : String(req.body.note).trim();
+  const scheduleType = req.body.schedule_type === null || req.body.schedule_type === undefined || req.body.schedule_type === ''
+    ? 1
+    : Number(req.body.schedule_type);
+
+  if (!scheduleId) {
+    return res.status(400).json({ success: false, message: 'schedule_id is required' });
+  }
+
+  if (!staffId) {
+    return res.status(400).json({ success: false, message: 'staff_id is required' });
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) {
+    return res.status(400).json({ success: false, message: 'work_date must be YYYY-MM-DD' });
+  }
+
+  if (!/^\d{2}:\d{2}$/.test(startTime) || !/^\d{2}:\d{2}$/.test(endTime)) {
+    return res.status(400).json({ success: false, message: 'start_time and end_time must be HH:mm' });
+  }
+
+  if (startTime >= endTime) {
+    return res.status(400).json({ success: false, message: 'start_time must be earlier than end_time' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+
+    const scheduleRows = await conn.query(
+      'SELECT schedule_id FROM staff_schedule WHERE schedule_id = ?',
+      [scheduleId]
+    );
+
+    if (!scheduleRows.length) {
+      return res.status(404).json({ success: false, message: 'Schedule not found' });
+    }
+
+    const staffRows = await conn.query(
+      'SELECT eid FROM staff WHERE eid = ?',
+      [staffId]
+    );
+
+    if (!staffRows.length) {
+      return res.status(404).json({ success: false, message: 'Staff not found' });
+    }
+
+    const duplicateRows = await conn.query(
+      `SELECT schedule_id
+       FROM staff_schedule
+       WHERE staff_id = ?
+         AND work_date = STR_TO_DATE(?, '%Y-%m-%d')
+         AND schedule_id <> ?
+       LIMIT 1`,
+      [staffId, workDate, scheduleId]
+    );
+
+    if (duplicateRows.length) {
+      return res.status(400).json({ success: false, message: '同日期同一位員工只能有一筆班表' });
+    }
+
+    await conn.query(
+      `UPDATE staff_schedule
+       SET staff_id = ?,
+           work_date = STR_TO_DATE(?, '%Y-%m-%d'),
+           start_time = ?,
+           end_time = ?,
+           schedule_type = ?,
+           is_active = ?,
+           note = ?
+       WHERE schedule_id = ?`,
+      [staffId, workDate, startTime, endTime, scheduleType, isActive, note, scheduleId]
+    );
+
+    res.json({ success: true, schedule_id: scheduleId });
+  } catch (err) {
+    console.error('staff_schedule update error', err);
     res.status(500).send('staff_schedule DB error');
   } finally {
     if (conn) conn.release();
