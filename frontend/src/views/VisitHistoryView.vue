@@ -606,9 +606,10 @@ export default {
   --shadow-soft: 0 18px 42px rgba(36, 66, 52, 0.12);
   --error: #b13d34;
   margin: 0 auto;
+  box-sizing: border-box;
   min-height: 100%;
   max-width: 1480px;
-  padding: 32px 24px 40px;
+  padding: 20px 24px 12px;
   color: var(--text-main);
   background: var(--page-bg);
 }
@@ -617,8 +618,8 @@ export default {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 24px;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
 .history-eyebrow,
@@ -657,7 +658,7 @@ export default {
 
 .history-clock-card {
   min-width: 220px;
-  padding: 18px 20px;
+  padding: 14px 18px;
 }
 
 .history-clock-label {
@@ -669,17 +670,17 @@ export default {
 
 .search-card,
 .results-card {
-  padding: 24px;
+  padding: 18px 20px;
 }
 
 .search-card {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .search-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px 20px;
+  gap: 14px 18px;
 }
 
 .search-field {
@@ -715,8 +716,8 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  margin-top: 22px;
+  gap: 12px;
+  margin-top: 16px;
 }
 
 .search-hint {
@@ -764,7 +765,7 @@ export default {
 }
 
 .search-message {
-  margin: 16px 0 0;
+  margin: 12px 0 0;
   line-height: 1.6;
 }
 
@@ -781,7 +782,7 @@ export default {
   align-items: end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .results-count {
@@ -999,7 +1000,7 @@ export default {
 
 @media (max-width: 720px) {
   .visit-history-page {
-    padding: 24px 16px 32px;
+    padding: 16px 16px 12px;
   }
 
   .search-grid,
