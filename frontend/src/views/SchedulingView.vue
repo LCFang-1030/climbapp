@@ -15,23 +15,6 @@
           <button type="button" class="calendar-today-button" @click="goToCurrentMonth">今天</button>
           <button type="button" class="calendar-nav-button" @click="goToNextMonth">下個月</button>
         </div>
-
-        <div class="calendar-toolbar">
-          <div class="staff-legend" aria-label="員工顯示控制">
-            <button
-              v-for="staff in staffList"
-              :key="staff.eid"
-              type="button"
-              :class="['staff-legend-item', { 'staff-legend-item--inactive': !isStaffVisible(staff.eid) }]"
-              @click="toggleStaffVisibility(staff.eid)"
-            >
-              <span class="staff-legend-dot" :style="{ backgroundColor: staffColor(staff.eid) }"></span>
-              <span class="staff-legend-name">{{ staff.alias || staff.name || staff.employee_id }}</span>
-            </button>
-          </div>
-
-          <button type="button" class="calendar-add-button" @click="openCreateDialog()">新增班表</button>
-        </div>
       </div>
     </header>
 
@@ -42,6 +25,23 @@
           <h2>{{ currentMonthLabel }}</h2>
         </div>
         <p class="calendar-range">{{ visibleRangeLabel }}</p>
+      </div>
+
+      <div class="calendar-toolbar calendar-toolbar--inside">
+        <div class="staff-legend" aria-label="員工顯示控制">
+          <button
+            v-for="staff in staffList"
+            :key="staff.eid"
+            type="button"
+            :class="['staff-legend-item', { 'staff-legend-item--inactive': !isStaffVisible(staff.eid) }]"
+            @click="toggleStaffVisibility(staff.eid)"
+          >
+            <span class="staff-legend-dot" :style="{ backgroundColor: staffColor(staff.eid) }"></span>
+            <span class="staff-legend-name">{{ staff.alias || staff.name || staff.employee_id }}</span>
+          </button>
+        </div>
+
+        <button type="button" class="calendar-add-button" @click="openCreateDialog()">新增班表</button>
       </div>
 
       <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
@@ -722,9 +722,8 @@ export default {
 
 .calendar-actions {
   display: flex;
-  flex-direction: column;
   align-items: flex-end;
-  gap: 14px;
+  justify-content: flex-start;
   min-width: min(520px, 100%);
 }
 
@@ -824,12 +823,18 @@ export default {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
-  padding: 8px 8px 18px;
+  margin-bottom: 12px;
+  padding: 8px 8px 8px;
 }
 
 .calendar-range {
   font-size: 13px;
+}
+
+.calendar-toolbar--inside {
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 0 8px 10px;
 }
 
 .calendar-weekdays,
@@ -1141,13 +1146,18 @@ export default {
   }
 
   .calendar-actions {
-    align-items: stretch;
+    width: 100%;
+    align-items: flex-end;
     min-width: 100%;
   }
 
   .calendar-controls,
   .calendar-toolbar {
     justify-content: flex-start;
+  }
+
+  .calendar-toolbar--inside {
+    width: 100%;
   }
 }
 
