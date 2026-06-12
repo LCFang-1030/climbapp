@@ -177,7 +177,7 @@
 <script>
 import axios from 'axios'
 import { RouterLink } from 'vue-router'
-import { canAccessPermission, clearStoredAuth, getStoredAuth, touchStoredAuthActivity } from './utils/auth'
+import { canAccessPermission, clearStoredAuth, getStoredAuth, getStoredAuthLogoutReason, touchStoredAuthActivity } from './utils/auth'
 
 const AUTH_ACTIVITY_EVENTS = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart']
 const AUTH_ACTIVITY_SYNC_INTERVAL_MS = 30 * 1000
@@ -310,6 +310,7 @@ export default {
         return
       }
 
+      const logoutReason = getStoredAuthLogoutReason()
       const now = Date.now()
       if (now - this.lastActivitySyncAt < AUTH_ACTIVITY_SYNC_INTERVAL_MS) {
         return
@@ -319,7 +320,7 @@ export default {
       this.lastActivitySyncAt = now
 
       if (!nextAuth) {
-        this.handleAutoLogout()
+        this.handleAutoLogout(logoutReason)
         return
       }
 
@@ -330,9 +331,10 @@ export default {
         return
       }
 
+      const logoutReason = getStoredAuthLogoutReason()
       const auth = getStoredAuth()
       if (!auth) {
-        this.handleAutoLogout()
+        this.handleAutoLogout(logoutReason)
         return
       }
 
@@ -342,10 +344,11 @@ export default {
       this.expandedGroups[groupKey] = !this.expandedGroups[groupKey]
     },
     refreshAuthState() {
+      const logoutReason = getStoredAuthLogoutReason()
       const auth = getStoredAuth()
 
       if (!auth && this.currentStaff?.isLoggedIn) {
-        this.handleAutoLogout()
+        this.handleAutoLogout(logoutReason)
         return
       }
 
@@ -503,7 +506,7 @@ export default {
       this.closePasswordDialog()
       this.$router.push('/login')
     },
-    handleAutoLogout() {
+    handleAutoLogout(reason = null) {
       clearStoredAuth()
       this.currentStaff = null
       this.lastActivitySyncAt = 0
@@ -511,7 +514,8 @@ export default {
       this.closePasswordDialog()
 
       if (this.$route.path !== '/login') {
-        this.$router.push('/login')
+        const query = reason ? { logout_reason: reason } : undefined
+        this.$router.push({ path: '/login', query })
       }
     },
   },

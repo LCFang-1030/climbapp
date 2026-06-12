@@ -39,31 +39,61 @@ export function getNextMidnightTimestamp(baseTimestamp = Date.now()) {
   return nextMidnight.getTime()
 }
 
-function isStoredAuthExpired(auth, now = Date.now()) {
+function getStoredAuthSnapshot() {
+  const raw = localStorage.getItem(STAFF_AUTH_STORAGE_KEY)
+  if (!raw) {
+    return null
+  }
+
+  return JSON.parse(raw)
+}
+
+function getStoredAuthExpiryReason(auth, now = Date.now()) {
   const lastActiveAt = Number(auth?.lastActiveAt ?? 0)
   const forceLogoutAt = Number(auth?.forceLogoutAt ?? 0)
 
   if (!lastActiveAt || !forceLogoutAt) {
-    return true
+    return 'expired'
   }
 
-  return now - lastActiveAt >= STAFF_AUTH_IDLE_TIMEOUT_MS || now >= forceLogoutAt
+  if (now >= forceLogoutAt) {
+    return 'midnight'
+  }
+
+  if (now - lastActiveAt >= STAFF_AUTH_IDLE_TIMEOUT_MS) {
+    return 'idle_timeout'
+  }
+
+  return null
+}
+
+export function getStoredAuthLogoutReason(now = Date.now()) {
+  try {
+    const auth = getStoredAuthSnapshot()
+    if (!auth?.isLoggedIn) {
+      return auth ? 'expired' : null
+    }
+
+    return getStoredAuthExpiryReason(auth, now)
+  } catch (error) {
+    console.error('Failed to inspect stored auth payload', error)
+    return 'expired'
+  }
 }
 
 export function getStoredAuth() {
   try {
-    const raw = localStorage.getItem(STAFF_AUTH_STORAGE_KEY)
-    if (!raw) {
+    const parsed = getStoredAuthSnapshot()
+    if (!parsed) {
       return null
     }
 
-    const parsed = JSON.parse(raw)
     if (!parsed?.isLoggedIn) {
       clearStoredAuth()
       return null
     }
 
-    if (isStoredAuthExpired(parsed)) {
+    if (getStoredAuthExpiryReason(parsed)) {
       clearStoredAuth()
       return null
     }

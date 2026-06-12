@@ -162,8 +162,25 @@ export default {
     this.$nextTick(() => {
       this.$refs.employeeSelectRef?.focus()
     })
+    this.showLogoutReasonMessage()
   },
   methods: {
+    showLogoutReasonMessage() {
+      const reason = String(this.$route.query.logout_reason ?? '')
+      const messageMap = {
+        idle_timeout: '已超過 1 小時未操作，系統已自動登出，請重新登入。',
+        midnight: '已到凌晨 0 點，系統已自動登出，請重新登入。',
+        expired: '登入狀態已失效，請重新登入。',
+      }
+
+      const message = messageMap[reason]
+      if (!message) {
+        return
+      }
+
+      this.errorMsg = message
+      this.$router.replace({ path: this.$route.path, query: {} })
+    },
     focusPasswordInput() {
       this.$nextTick(() => {
         if (!this.employeeId) {
