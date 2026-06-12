@@ -177,7 +177,11 @@
 <script>
 import axios from 'axios'
 import { RouterLink } from 'vue-router'
-import { canAccessPermission, clearStoredAuth, getStoredAuth } from './utils/auth'
+import { canAccessPermission, clearStoredAuth, getStoredAuth, touchStoredAuthActivity } from './utils/auth'
+
+const AUTH_ACTIVITY_EVENTS = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart']
+const AUTH_ACTIVITY_SYNC_INTERVAL_MS = 30 * 1000
+const AUTH_CHECK_INTERVAL_MS = 60 * 1000
 
 const navItems = [
   { label: '首頁', to: '/', permissionKey: 'home', requiresAuth: true },
@@ -243,16 +247,29 @@ export default {
       profileSuccessMsg: '',
       isPasswordSubmitting: false,
       isPasswordChecking: false,
+      authCheckTimer: null,
+      lastActivitySyncAt: 0,
     }
   },
   mounted() {
     this.refreshAuthState()
-    window.addEventListener('storage', this.refreshAuthState)
+    window.addEventListener('storage', this.handleAuthStorageChange)
     document.addEventListener('click', this.handleDocumentClick)
+    AUTH_ACTIVITY_EVENTS.forEach((eventName) => {
+      window.addEventListener(eventName, this.handleUserActivity, { passive: true })
+    })
+    this.authCheckTimer = window.setInterval(this.checkAuthSession, AUTH_CHECK_INTERVAL_MS)
   },
   beforeUnmount() {
-    window.removeEventListener('storage', this.refreshAuthState)
+    window.removeEventListener('storage', this.handleAuthStorageChange)
     document.removeEventListener('click', this.handleDocumentClick)
+    AUTH_ACTIVITY_EVENTS.forEach((eventName) => {
+      window.removeEventListener(eventName, this.handleUserActivity)
+    })
+    if (this.authCheckTimer) {
+      window.clearInterval(this.authCheckTimer)
+      this.authCheckTimer = null
+    }
   },
   watch: {
     $route() {
@@ -285,11 +302,57 @@ export default {
 
       this.closeProfileMenu()
     },
+    handleAuthStorageChange() {
+      this.refreshAuthState()
+    },
+    handleUserActivity() {
+      if (!this.currentStaff?.isLoggedIn) {
+        return
+      }
+
+      const now = Date.now()
+      if (now - this.lastActivitySyncAt < AUTH_ACTIVITY_SYNC_INTERVAL_MS) {
+        return
+      }
+
+      const nextAuth = touchStoredAuthActivity()
+      this.lastActivitySyncAt = now
+
+      if (!nextAuth) {
+        this.handleAutoLogout()
+        return
+      }
+
+      this.currentStaff = nextAuth
+    },
+    checkAuthSession() {
+      if (!this.currentStaff?.isLoggedIn) {
+        return
+      }
+
+      const auth = getStoredAuth()
+      if (!auth) {
+        this.handleAutoLogout()
+        return
+      }
+
+      this.currentStaff = auth
+    },
     toggleGroup(groupKey) {
       this.expandedGroups[groupKey] = !this.expandedGroups[groupKey]
     },
     refreshAuthState() {
-      this.currentStaff = getStoredAuth()
+      const auth = getStoredAuth()
+
+      if (!auth && this.currentStaff?.isLoggedIn) {
+        this.handleAutoLogout()
+        return
+      }
+
+      this.currentStaff = auth
+      if (!auth) {
+        this.lastActivitySyncAt = 0
+      }
     },
     isAccessible(item) {
       if (!item.requiresAuth) {
@@ -435,9 +498,21 @@ export default {
     logout() {
       clearStoredAuth()
       this.currentStaff = null
+      this.lastActivitySyncAt = 0
       this.closeProfileMenu()
       this.closePasswordDialog()
       this.$router.push('/login')
+    },
+    handleAutoLogout() {
+      clearStoredAuth()
+      this.currentStaff = null
+      this.lastActivitySyncAt = 0
+      this.closeProfileMenu()
+      this.closePasswordDialog()
+
+      if (this.$route.path !== '/login') {
+        this.$router.push('/login')
+      }
     },
   },
 }

@@ -215,12 +215,6 @@ const normalizeText = (value) => String(value ?? '').trim().toLowerCase()
 const normalizeDigits = (value) => String(value ?? '').replace(/\D/g, '')
 
 export default {
-  beforeCreate() {
-    if (!localStorage.getItem('islogin')) {
-      this.$router.push('/staff')
-    }
-  },
-
   async mounted() {
     this.updateCurrentDateTime()
     this.clockTimer = window.setInterval(this.updateCurrentDateTime, 1000)

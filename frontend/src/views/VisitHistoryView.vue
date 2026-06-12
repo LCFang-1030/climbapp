@@ -281,12 +281,6 @@ const createDisplayOrderNumber = (visit) =>
   String(visit.order_no ?? '').trim() || `OD${String(visit.visit_id ?? '').padStart(8, '0')}`
 
 export default {
-  beforeCreate() {
-    if (!localStorage.getItem('islogin')) {
-      this.$router.push('/staff')
-    }
-  },
-
   async mounted() {
     this.updateCurrentDateTime()
     this.clockTimer = window.setInterval(this.updateCurrentDateTime, 1000)
